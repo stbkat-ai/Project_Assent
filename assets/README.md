@@ -46,6 +46,11 @@ and hut out of the scene, clears the options panel and view strip, and un-highli
 `pip install opencv-contrib-python-headless`. Tap-zone coordinates live in `LAYOUT` in
 `scripts/ui/leader_editor.gd` and `scripts/ui/building_editor.gd`.
 
+The soldier screen (`assets/ui/soldier_screen.png`) comes from `ui_soldier_mockup.png` the same way. Weapon
+icons (`assets/ui/icons/weapon_*.png`) and projectiles (`assets/sprites/projectiles/<id>/e.png`, pointing
+right; the game turns them to their flight) are cut from `sheet_soldier_weapons_anim.png` by
+`tools/ui/build_icons.py`.
+
 The title screen art is `assets/ui/title.png` (its painted buttons are tap zones, see
 `scripts/ui/title_screen.gd`). Original ChatGPT sheets are kept in `assets/source/` (not shipped in the game).
 

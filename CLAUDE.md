@@ -32,6 +32,9 @@ https://claude.ai/code/artifact/c152695d-a333-43db-9af9-d9aa2f2796e3 — record 
   `scripts/data/building_catalog.gd`, drawn by `scripts/render/building_draw.gd`). A Hut houses 4 = 4 soldiers.
   Hut art is a kit (shape + walls/roof/door/crest/hang/yard) built by `tools/huts/build.py`, which also
   writes `scripts/data/building_parts.gd` (never edit that by hand).
+- Army: soldier designs (`state.blueprints`) and squads (`state.squads`) live in `game_state.gd` with the
+  population rules (raise / disband / refit); the designer is `scripts/ui/soldier_editor.gd`, squads stand and
+  march in `village.gd` (Army panel). Squad size comes from gear cost (`UnitStats.squad_size`).
 - Wilderness wildlife and scoring: `scripts/data/wildlife_catalog.gd` (stats, temper, points; the score sets
   the village's starting Hut limit via `huts_for_score`). Creature tempers live in `creature.gd`.
 - Tabs for indentation.

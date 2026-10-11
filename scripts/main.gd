@@ -9,8 +9,9 @@ const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const TitleScreen = preload("res://scripts/ui/title_screen.gd")
 const BuildingEditor = preload("res://scripts/ui/building_editor.gd")
 const Village = preload("res://scripts/world/village.gd")
+const SoldierEditor = preload("res://scripts/ui/soldier_editor.gd")
 
-const VERSION := "0.11.0 - creator screens"
+const VERSION := "0.12.0 - soldiers and squads"
 
 var state: GameState
 var _current: Node = null
@@ -145,6 +146,10 @@ func show_village() -> void:
 	village.finished.connect(func(action: String) -> void:
 		if action.begins_with("redesign:"):
 			show_building_editor(action.get_slice(":", 1))
+		elif action.begins_with("soldier:"):
+			show_soldier_editor(action.get_slice(":", 1), false)
+		elif action.begins_with("soldier_new:"):
+			show_soldier_editor(action.get_slice(":", 1), true)
 		else:
 			show_menu())
 	_swap(village)
@@ -158,4 +163,19 @@ func show_building_editor(type_id: String) -> void:
 			show_village()
 		else:
 			show_menu())
+	_swap(editor)
+
+
+## Opening phase 4: design a soldier (a squad blueprint), then back to the village.
+func show_soldier_editor(blueprint_id: String, is_new: bool) -> void:
+	if state.get_blueprint(blueprint_id).is_empty():
+		show_village()
+		return
+	var editor := SoldierEditor.new()
+	editor.setup(state, blueprint_id, is_new)
+	editor.done.connect(func(action: String) -> void:
+		if action == "confirm":
+			state.refit_squads(blueprint_id)
+			state.save_game()
+		show_village())
 	_swap(editor)

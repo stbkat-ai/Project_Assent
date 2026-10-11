@@ -4,11 +4,15 @@ extends Node2D
 ## and can go anywhere in the clearing as long as they don't overlap. Each Hut
 ## houses a family of four: four soldiers you can field.
 ##
+## Opening phase 4 lives here too: the Army panel designs soldiers and raises
+## squads from the village's free people; squads stand in formation, and tapping
+## a soldier selects the squad (tap the ground to march it).
+##
 ## Controls: pick a building on the bottom bar, then tap the ground to place it.
 ## Tap a building to select it (move or remove). Tap the ground with nothing
 ## picked to walk your leader there. Drag to pan, pinch to zoom.
 
-signal finished(action: String)  # "menu", or "redesign:<type>"
+signal finished(action: String)  # "menu", "redesign:<type>", "soldier:<blueprint id>" or "soldier_new:<blueprint id>"
 
 const GameState = preload("res://scripts/game_state.gd")
 const WildlifeCatalog = preload("res://scripts/data/wildlife_catalog.gd")
@@ -36,6 +40,10 @@ var _placing := ""  # building type being placed, or ""
 var _moving = null  # the Building being moved, if any
 var _ghost: Building
 var _selected = null
+var _soldiers: Array = []  # Creature nodes of every squad
+var _selected_squad := ""  # squad id, or "" when the leader is selected
+var _ui_root: Control
+var _army: Control = null
 
 var _status: Label
 var _hint: Label
@@ -87,6 +95,7 @@ func _ready() -> void:
 	_ghost.visible = false
 	_units.add_child(_ghost)
 
+	_spawn_squads()
 	_build_ui()
 	if not state.has_chief_hut():
 		_start_placing("chief_hut")
@@ -194,12 +203,19 @@ func _on_tap(world: Vector2) -> void:
 		_ghost.queue_redraw()
 		_refresh_ui()
 		return
+	var unit = _unit_at(world)
+	if unit != null:
+		_select_unit(unit)
+		return
 	var hit = _building_at(world)
 	if hit != null:
 		_select(hit)
 		return
 	_select(null)
-	_hero.order_move(world.clamp(WORLD.position, WORLD.end))
+	if _selected_squad != "":
+		_march(world)
+	else:
+		_hero.order_move(world.clamp(WORLD.position, WORLD.end))
 
 
 func _place(rect: Rect2i) -> void:
@@ -258,6 +274,7 @@ func _build_ui() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	var root := Control.new()
+	_ui_root = root
 	root.theme = UiStyle.make_theme()
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(UiStyle.full_rect(root))
@@ -310,7 +327,8 @@ func _refresh_ui() -> void:
 	for b in _buildings:
 		placed.append({"type": b.type_id})
 	var pop := VillageLayout.population(placed)
-	_status.text = "Population %d   (Huts %d of %d)   -   soldiers you can field: %d" % [pop, huts, _hut_limit(), pop]
+	_status.text = "Population %d   (Huts %d of %d)   -   in squads %d, free %d" % [pop, huts, _hut_limit(),
+		state.soldiers_in_squads(), state.free_population()]
 
 	if _placing == "chief_hut":
 		_hint.text = "Tap where your Chief's Hut should stand, then tap again to build it."
@@ -323,7 +341,12 @@ func _refresh_ui() -> void:
 	elif huts >= _hut_limit():
 		_hint.text = "Your people have raised every Hut they can for now (score %d in the wilderness)." % state.wilderness_score
 	else:
-		_hint.text = "Pick a building below, or tap the ground to walk %s around." % _hero.display_name
+		if _selected_squad != "":
+			_hint.text = "%s selected: tap the ground to march them, or tap %s." % [_squad_name(_selected_squad), _hero.display_name]
+		elif state.blueprints.is_empty():
+			_hint.text = "Open Army to design your first soldier."
+		else:
+			_hint.text = "Tap a soldier to select their squad, or tap the ground to walk %s around." % _hero.display_name
 
 	for child in _bar.get_children():
 		child.queue_free()
@@ -354,6 +377,9 @@ func _refresh_ui() -> void:
 		_save_village()
 		finished.emit("redesign:chief_hut"))
 	_bar.add_child(redesign_chief)
+	var army := UiStyle.button("Army", 130)
+	army.pressed.connect(_open_army)
+	_bar.add_child(army)
 	if _selected != null:
 		var move := UiStyle.button("Move", 110)
 		var target = _selected
@@ -377,3 +403,171 @@ func _draw() -> void:
 	draw_set_transform(area.get_center(), 0.0, Vector2(1.0, area.size.y / area.size.x))
 	draw_circle(Vector2.ZERO, area.size.x * 0.62, GROUND)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+# --- Squads ------------------------------------------------------------------------
+
+## Soldiers stand in rows of four.
+func _formation_offset(index: int) -> Vector2:
+	return Vector2((index % 4 - 1.5) * 26.0, floorf(index / 4.0) * 22.0)
+
+
+func _spawn_squads() -> void:
+	for s in _soldiers:
+		if is_instance_valid(s):
+			s.queue_free()
+	_soldiers.clear()
+	var center := VillageLayout.center_of(VillageLayout.AREA)
+	for i in state.squads.size():
+		var q: Dictionary = state.squads[i]
+		var bp := state.get_blueprint(str(q["blueprint"]))
+		if bp.is_empty():
+			continue
+		var base := center + Vector2(-255.0 + (i % 4) * 170.0, 230.0 + floorf(i / 4.0) * 120.0)
+		for m in int(q["size"]):
+			var c := Creature.new()
+			c.team = "player"
+			c.kind = "human"
+			c.look = bp["look"]
+			c.gear = bp["gear"]
+			c.display_name = str(bp["name"])
+			c.bounds = WORLD
+			c.apply_stats(UnitStats.compute(c.gear, false))
+			c.squad_id = str(q["id"])
+			c.squad_leader = m == 0
+			c.selected = c.squad_id == _selected_squad
+			c.position = (base + _formation_offset(m)).clamp(WORLD.position, WORLD.end)
+			_units.add_child(c)
+			_soldiers.append(c)
+
+
+func _squad_name(squad_id: String) -> String:
+	for q in state.squads:
+		if str(q["id"]) == squad_id:
+			return str(state.get_blueprint(str(q["blueprint"])).get("name", "Squad"))
+	return "Squad"
+
+
+## The leader or a soldier under a tap, if any.
+func _unit_at(world: Vector2):
+	var best = null
+	var best_dist := 24.0
+	for c in [_hero] + _soldiers:
+		if not is_instance_valid(c):
+			continue
+		var d: float = world.distance_to(c.position + Creature.BODY_CENTER)
+		if d < best_dist:
+			best_dist = d
+			best = c
+	return best
+
+
+func _select_unit(unit) -> void:
+	_select(null)
+	_selected_squad = "" if unit == _hero else str(unit.squad_id)
+	_hero.selected = _selected_squad == ""
+	_hero.queue_redraw()
+	for c in _soldiers:
+		c.selected = c.squad_id == _selected_squad
+		c.queue_redraw()
+	_refresh_ui()
+
+
+## Move the selected squad to `world`, keeping its formation.
+func _march(world: Vector2) -> void:
+	var index := 0
+	for c in _soldiers:
+		if c.squad_id == _selected_squad:
+			c.order_move((world + _formation_offset(index) - Vector2(39, 0)).clamp(WORLD.position, WORLD.end))
+			index += 1
+
+
+# --- Army panel ----------------------------------------------------------------------
+
+func _open_army() -> void:
+	_close_army()
+	var shade := ColorRect.new()
+	shade.color = Color(0, 0, 0, 0.55)
+	_ui_root.add_child(UiStyle.full_rect(shade))
+	_army = shade
+	var center := CenterContainer.new()
+	shade.add_child(UiStyle.full_rect(center))
+	var panel := PanelContainer.new()
+	center.add_child(panel)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(680, 440)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	panel.add_child(scroll)
+	var box := VBoxContainer.new()
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_theme_constant_override("separation", 10)
+	scroll.add_child(box)
+
+	box.add_child(UiStyle.label("Army", 28, UiStyle.GOLD))
+	box.add_child(UiStyle.label("People %d   -   in squads %d   -   free to serve %d   (each Hut houses 4)" % [
+		state.population(), state.soldiers_in_squads(), state.free_population()], 18, UiStyle.MUTED))
+
+	box.add_child(UiStyle.label("Soldier designs", 22, UiStyle.GOLD))
+	if state.blueprints.is_empty():
+		box.add_child(UiStyle.label("None yet. A design sets the look and gear every soldier of a squad shares.", 18, UiStyle.MUTED))
+	for bp in state.blueprints:
+		var id := str(bp["id"])
+		var stats := UnitStats.compute(bp["gear"], false)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		var title := UiStyle.label("%s   (squads of %d, cost %d)" % [bp["name"], stats["squad_size"], stats["cost"]], 18)
+		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		title.clip_text = true
+		row.add_child(title)
+		var edit := UiStyle.button("Edit", 90)
+		edit.pressed.connect(func() -> void:
+			_save_village()
+			finished.emit("soldier:" + id))
+		row.add_child(edit)
+		var raise := UiStyle.button("Raise squad", 160)
+		raise.disabled = not state.can_raise_squad(id)
+		raise.pressed.connect(func() -> void:
+			state.raise_squad(id)
+			state.save_game()
+			_spawn_squads()
+			_refresh_ui()
+			_open_army())
+		row.add_child(raise)
+		box.add_child(row)
+	var new_design := UiStyle.button("+  New soldier design", 280)
+	new_design.pressed.connect(func() -> void:
+		var bp := state.new_blueprint()
+		_save_village()
+		finished.emit("soldier_new:" + str(bp["id"])))
+	box.add_child(new_design)
+
+	box.add_child(UiStyle.label("Squads", 22, UiStyle.GOLD))
+	if state.squads.is_empty():
+		box.add_child(UiStyle.label("None yet. Raise one from a design: it takes people from the village.", 18, UiStyle.MUTED))
+	for q in state.squads:
+		var qid := str(q["id"])
+		var row := HBoxContainer.new()
+		var label := UiStyle.label("%s  x%d" % [_squad_name(qid), int(q["size"])], 18)
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(label)
+		var disband := UiStyle.button("Disband", 130)
+		disband.pressed.connect(func() -> void:
+			state.disband_squad(qid)
+			if _selected_squad == qid:
+				_select_unit(_hero)
+			state.save_game()
+			_spawn_squads()
+			_refresh_ui()
+			_open_army())
+		row.add_child(disband)
+		box.add_child(row)
+
+	var close := UiStyle.button("Close", 140)
+	close.pressed.connect(_close_army)
+	box.add_child(close)
+
+
+func _close_army() -> void:
+	if _army != null and is_instance_valid(_army):
+		_army.queue_free()
+	_army = null

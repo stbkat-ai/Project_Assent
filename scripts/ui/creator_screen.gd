@@ -60,6 +60,8 @@ var canvas: Control
 var stage: Control
 var panel: VBoxContainer
 var viewbar: HBoxContainer
+## Every option panel by name: "main" (the `panel` above) plus any in layout["panels"].
+var panels := {}
 var current_tab := 0
 
 var _tex: Texture2D = null
@@ -69,7 +71,10 @@ var _flash_t := 0.0
 var _overlay: Control
 
 
-## `layout` (art pixels): tabs: Array[Rect2], randomize / confirm / cancel / stage / panel / viewbar: Rect2.
+## `layout` (art pixels): tabs: Array[Rect2], randomize / confirm / cancel / stage / panel: Rect2,
+## optional viewbar: Rect2, optional panels: {name: Rect2} (more option panels), optional strips:
+## [names] (panels that scroll sideways in one row), optional zones: {name: Rect2} (more painted
+## buttons; a tap emits action(name)).
 func configure(art_path: String, layout: Dictionary) -> void:
 	_layout = layout
 	if ResourceLoader.exists(art_path):
@@ -89,29 +94,30 @@ func _ready() -> void:
 	_place(stage, _layout["stage"])
 	canvas.add_child(stage)
 
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_place(scroll, Rect2(_layout["panel"]).grow(-14))
-	canvas.add_child(scroll)
-	panel = VBoxContainer.new()
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_theme_constant_override("separation", 12)
-	scroll.add_child(panel)
+	panel = _make_panel(_layout["panel"], false)
+	panels["main"] = panel
+	var extra: Dictionary = _layout.get("panels", {})
+	var strips: Array = _layout.get("strips", [])
+	for key in extra:
+		panels[str(key)] = _make_panel(extra[key], strips.has(key))
 
 	viewbar = HBoxContainer.new()
 	viewbar.alignment = BoxContainer.ALIGNMENT_CENTER
 	viewbar.add_theme_constant_override("separation", 14)
-	_place(viewbar, Rect2(_layout["viewbar"]).grow(-10))
-	canvas.add_child(viewbar)
+	if _layout.has("viewbar"):
+		_place(viewbar, Rect2(_layout["viewbar"]).grow(-10))
+		canvas.add_child(viewbar)
 
 	# Painted tabs and buttons: invisible buttons over the art.
 	var tabs: Array = _layout["tabs"]
 	for i in tabs.size():
 		var index := i
 		_zone(tabs[i], func() -> void: select_tab(index))
-	for key in ["randomize", "confirm", "cancel"]:
+	var actions := {"randomize": _layout["randomize"], "confirm": _layout["confirm"], "cancel": _layout["cancel"]}
+	actions.merge(_layout.get("zones", {}))
+	for key in actions:
 		var act := str(key)
-		_zone(_layout[key], func() -> void:
+		_zone(actions[key], func() -> void:
 			_flash = act
 			_flash_t = 0.2
 			action.emit(act))
@@ -124,6 +130,24 @@ func _ready() -> void:
 
 	resized.connect(_fit)
 	_fit()
+
+
+## A scrolling option panel. A strip scrolls sideways and keeps its tiles in one row.
+func _make_panel(r: Rect2, strip: bool) -> VBoxContainer:
+	var scroll := ScrollContainer.new()
+	if strip:
+		scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	else:
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_place(scroll, Rect2(r).grow(-12))
+	canvas.add_child(scroll)
+	var box := VBoxContainer.new()
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_theme_constant_override("separation", 10)
+	box.set_meta("strip", strip)
+	box.set_meta("width", r.size.x)
+	scroll.add_child(box)
+	return box
 
 
 func _place(c: Control, r: Rect2) -> void:
@@ -180,14 +204,16 @@ func _draw_overlay() -> void:
 		_overlay.draw_rect(r, Color(0.85, 0.62, 0.22, 0.22))
 		_overlay.draw_rect(r.grow(-3), SELECT, false, 4.0)
 	if _flash != "":
-		_overlay.draw_rect(_layout[_flash], Color(1.0, 0.9, 0.6, 0.25))
+		var zones: Dictionary = _layout.get("zones", {})
+		_overlay.draw_rect(zones.get(_flash, _layout.get(_flash, Rect2())), Color(1.0, 0.9, 0.6, 0.25))
 
 
 # --- Panel helpers ---------------------------------------------------------------
 
-func clear_panel() -> void:
-	for child in panel.get_children():
-		panel.remove_child(child)
+func clear_panel(into: String = "main") -> void:
+	var box: VBoxContainer = panels[into]
+	for child in box.get_children():
+		box.remove_child(child)
 		child.queue_free()
 
 
@@ -198,27 +224,34 @@ func clear_viewbar() -> void:
 
 
 ## A section header like the mockup's "BODY TYPE".
-func add_header(text: String) -> void:
+func add_header(text: String, into: String = "main") -> void:
 	var l := UiStyle.label(text.to_upper(), 30, HEADER)
-	panel.add_child(l)
+	panels[into].add_child(l)
 
 
-func add_note(text: String) -> Label:
+func add_note(text: String, into: String = "main") -> Label:
+	var box: VBoxContainer = panels[into]
 	var l := UiStyle.label(text, 22, UiStyle.MUTED)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.custom_minimum_size = Vector2(Rect2(_layout["panel"]).size.x - 50, 0)
-	panel.add_child(l)
+	l.custom_minimum_size = Vector2(float(box.get_meta("width")) - 50.0, 0)
+	box.add_child(l)
 	return l
 
 
 ## A row of option tiles. `options` = [[id, caption], ...]; `draw_fn(tile, rect, id)` draws one.
 ## `on_pick(id)` is called when one is tapped. Returns the tiles (by id) so the caller can refresh them.
 func add_tiles(options: Array, selected: String, tile_size: Vector2, draw_fn: Callable, on_pick: Callable,
-		show_captions: bool = true) -> Dictionary:
-	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 12)
-	flow.add_theme_constant_override("v_separation", 12)
-	panel.add_child(flow)
+		show_captions: bool = true, into: String = "main") -> Dictionary:
+	var box: VBoxContainer = panels[into]
+	var flow: Container
+	if bool(box.get_meta("strip")):
+		flow = HBoxContainer.new()
+		flow.add_theme_constant_override("separation", 12)
+	else:
+		flow = HFlowContainer.new()
+		flow.add_theme_constant_override("h_separation", 12)
+		flow.add_theme_constant_override("v_separation", 12)
+	box.add_child(flow)
 	var tiles := {}
 	for option in options:
 		var id := str(option[0])

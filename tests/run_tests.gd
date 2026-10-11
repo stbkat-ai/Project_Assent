@@ -9,6 +9,7 @@ const SCRIPTS := [
 	"res://scripts/ui/creator_screen.gd",
 	"res://scripts/ui/leader_editor.gd",
 	"res://scripts/ui/building_editor.gd",
+	"res://scripts/ui/soldier_editor.gd",
 	"res://scripts/main.gd",
 	"res://scripts/game_state.gd",
 	"res://scripts/data/gear_catalog.gd",
@@ -58,6 +59,9 @@ func _init() -> void:
 	var wildlife = load("res://scripts/data/wildlife_catalog.gd")
 	if wildlife != null:
 		_test_wildlife(wildlife)
+	var game_state = load("res://scripts/game_state.gd")
+	if game_state != null:
+		_test_army(game_state)
 	var dirs = load("res://scripts/render/directions.gd")
 	var sprites = load("res://scripts/render/sprite_library.gd")
 	var figure = load("res://scripts/render/figure.gd")
@@ -238,13 +242,15 @@ func _test_art(sprites, scenery) -> void:
 	_check(legs_ok, "4 walk-cycle leg frames for every body, skin tone and view")
 	var fig = load("res://scripts/render/figure.gd")
 	var rest_ok := true
-	for kind in ["thrust", "swing", "shoot"]:
+	for kind in ["thrust", "swing", "shoot", "sweep_thrust", "overhead_thrust", "overhead", "sweep"]:
 		for v in fig.attack_pose(kind, 0.0) + fig.attack_pose(kind, 1.0):
 			if absf(float(v)) > 0.001:
 				rest_ok = false
 	_check(rest_ok, "attacks start and end at rest")
 	_check(float(fig.attack_pose("swing", 0.35)[0]) < -1.0, "a club or axe is raised back before the strike")
 	_check(float(fig.attack_pose("thrust", 0.55)[1]) > 4.0, "a spear is pushed forward in the thrust")
+	_check(fig.attack_name("swing", 1) == "overhead" and fig.attack_name("thrust", 4) == "sweep_thrust",
+		"each weapon kind mixes three attacks")
 	_check(ResourceLoader.exists("res://assets/ui/title.png"), "title screen art exists")
 	_check(ResourceLoader.exists("res://assets/ui/leader_screen.png") and ResourceLoader.exists("res://assets/ui/hut_screen.png"),
 		"leader and hut creator screen art exists")
@@ -332,3 +338,30 @@ func _test_wildlife(wildlife) -> void:
 		if s["temper"] == "skittish" and int(s["damage"]) != 0:
 			tempers_ok = false
 	_check(tempers_ok, "every animal has a known temper, and skittish ones never fight back")
+
+
+func _test_army(game_state) -> void:
+	print("Army:")
+	var gs = game_state.new()
+	gs.new_leader()
+	gs.village = [{"type": "chief_hut", "x": 10, "y": 10}, {"type": "hut", "x": 20, "y": 10}, {"type": "hut", "x": 24, "y": 10}]
+	_check(gs.population() == 8 and gs.free_population() == 8, "two huts: 8 people, all free")
+	var bp: Dictionary = gs.new_blueprint()
+	_check(str(bp["look"]["tribe_color"]) == gs.tribe_color(), "a new design wears the tribe's color")
+	_check(gs.squad_size_of(str(bp["id"])) == 8, "cheap spearmen come in squads of 8")
+	var q: Dictionary = gs.raise_squad(str(bp["id"]))
+	_check(not q.is_empty() and gs.free_population() == 0, "raising a squad takes its people from the village")
+	_check(gs.raise_squad(str(bp["id"])).is_empty(), "no squad without enough free people")
+	bp["gear"]["body"] = "bone_hide"
+	bp["gear"]["main_hand"] = "stone_axe"
+	bp["gear"]["off_hand"] = "bone_shield"
+	gs.refit_squads(str(bp["id"]))
+	_check(int(gs.squads[0]["size"]) == gs.squad_size_of(str(bp["id"])) and int(gs.squads[0]["size"]) < 8,
+		"pricier gear shrinks the design's squads")
+	gs.disband_squad(str(q["id"]))
+	_check(gs.squads.is_empty() and gs.free_population() == 8, "disbanding returns the people")
+	var bp2: Dictionary = gs.new_blueprint()
+	_check(str(bp2["id"]) != str(bp["id"]), "designs get their own ids")
+	gs.raise_squad(str(bp2["id"]))
+	gs.delete_blueprint(str(bp2["id"]))
+	_check(gs.squads.is_empty() and gs.get_blueprint(str(bp2["id"])).is_empty(), "deleting a design disbands its squads")

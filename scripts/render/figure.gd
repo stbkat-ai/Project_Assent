@@ -29,8 +29,25 @@ const ATTACK_POSES := {
 	# Club and axe: raise it back overhead, crouch, swing down and forward, follow through.
 	"swing": [[0.0, 0.0, 0.0, 0.0, 0.0], [0.35, -1.4, -1.0, -0.8, 1.0], [0.6, 0.55, 3.0, 2.5, 0.5],
 		[0.8, 0.75, 2.0, 1.5, 0.5], [1.0, 0.0, 0.0, 0.0, 0.0]],
+	# Spear sweep and overhead stab (the soldier weapon sheet's attacks 2 and 3).
+	"sweep_thrust": [[0.0, 0.0, 0.0, 0.0, 0.0], [0.3, -0.9, -1.0, -0.5, 0.5], [0.6, 0.9, 3.0, 1.5, 0.0],
+		[0.8, 1.1, 2.0, 1.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0]],
+	"overhead_thrust": [[0.0, 0.0, 0.0, 0.0, 0.0], [0.35, -0.8, 0.0, -0.6, -1.0], [0.6, 0.7, 5.0, 2.0, 1.0],
+		[0.8, 0.5, 3.0, 1.5, 0.5], [1.0, 0.0, 0.0, 0.0, 0.0]],
+	# Club and axe: a big overhead smash, and a low sideways sweep.
+	"overhead": [[0.0, 0.0, 0.0, 0.0, 0.0], [0.4, -2.0, -1.5, -1.0, -0.5], [0.65, 1.0, 3.0, 3.0, 1.5],
+		[0.85, 1.0, 2.0, 2.0, 1.0], [1.0, 0.0, 0.0, 0.0, 0.0]],
+	"sweep": [[0.0, 0.0, 0.0, 0.0, 0.0], [0.3, -0.6, -2.0, 0.0, 0.5], [0.6, 1.2, 4.0, 1.5, 0.5],
+		[0.8, 1.4, 3.0, 1.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0]],
 	# Sling and bow: pull back and release.
 	"shoot": [[0.0, 0.0, 0.0, 0.0, 0.0], [0.4, 0.0, -2.0, 0.0, 0.0], [0.6, 0.0, -2.5, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0]],
+}
+## The attacks a weapon kind mixes between (each swing picks one).
+const ATTACK_VARIANTS := {
+	"thrust": ["thrust", "sweep_thrust", "overhead_thrust"],
+	"swing": ["swing", "overhead", "sweep"],
+	"shoot": ["shoot"],
+	"punch": ["thrust"],
 }
 ## Share of the attack spent in the lunge stance (widest walk stride).
 const LUNGE_FROM := 0.45
@@ -179,7 +196,7 @@ static func option_has_art(key: String, id: String, look: Dictionary) -> bool:
 ## code-drawn pieces onto painted bodies would not line up). Without body art the
 ## whole figure is the code-drawn placeholder.
 static func draw_human(ci: CanvasItem, origin: Vector2, px: float, look: Dictionary, gear: Dictionary,
-		dir: int = Directions.S, walk_t: float = 0.0, swing_t: float = 0.0) -> void:
+		dir: int = Directions.S, walk_t: float = 0.0, swing_t: float = 0.0, variant: int = 0) -> void:
 	var c := Ctx.new()
 	c.ci = ci
 	c.px = px
@@ -197,7 +214,7 @@ static func draw_human(ci: CanvasItem, origin: Vector2, px: float, look: Diction
 	var back := Directions.is_back_view(c.view)
 	if has_body_art(look):
 		_draw_art_layers(ci, origin, px, c.view, c.mirrored, back, layer_pieces, walk_t, swing_t, str(look.get("sex", "male")),
-			GearCatalog.attack_kind(str(gear.get("main_hand", "fists"))))
+			attack_name(GearCatalog.attack_kind(str(gear.get("main_hand", "fists"))), variant))
 		return
 	for layer in (BACK_ORDER if back else FRONT_ORDER):
 		var piece: Array = layer_pieces[layer]
@@ -268,6 +285,12 @@ static func _draw_art_layers(ci: CanvasItem, origin: Vector2, px: float, view: S
 				SpriteLibrary.draw_rotated(ci, tex, origin, s, mirrored, hand, w_angle, up + lean + w_shift)
 			_:
 				SpriteLibrary.draw_region(ci, tex, origin, s, mirrored, Rect2(Vector2.ZERO, tex.get_size()), up + lean)
+
+
+## Which attack (a key of ATTACK_POSES) variant `variant` of a weapon kind plays.
+static func attack_name(kind: String, variant: int) -> String:
+	var list: Array = ATTACK_VARIANTS.get(kind, ["thrust"])
+	return str(list[posmod(variant, list.size())])
 
 
 ## [weapon turn, weapon push, body lean, crouch] at `t` (0-1) through an attack,

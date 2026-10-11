@@ -9,13 +9,14 @@ Stone Age to the space age. Built in **Godot 4** (GDScript), 2D pixel art, lands
 
 Both links rebuild automatically about 5 minutes after every push to `main`.
 
-## What's playable now (v0.11.0)
+## What's playable now (v0.12.0)
 
 | Prototype | Opening phase | What you can do |
 | --- | --- | --- |
 | **A. The leader** | 1. The first hero | Design your tribal leader: body, skin, hair, Shaman/Caveman clothing pieces, war paint, tribe color, and gear (armor, weapon, shield). Gear sets the stats; looks are cosmetic. |
 | **B. The wilderness** | 2. Into the wilderness | Walk your leader across a wild map, fight wolves, boars, a bear and hostile cavemen, hunt deer and small game for points, and claim the clearing for your village. Your **score** sets how many Huts the village can raise at first. |
 | **C. The village** | 3. Found the village | Design the **Chief's Hut** and the **Hut** (round hut or longhouse; walls, roof, doorway, roof crest, hanging decoration, yard prop), then place them freely in the clearing. Buildings can't overlap (an invisible grid keeps them tidy). Each Hut houses a family of four: **4 soldiers you can field**. |
+| **D. The army** | 4. Create the army | Design soldiers on the Create Soldier screen (looks, armor, weapon, shield; the tribe's color is shared), then raise squads from the village's free people in the **Army** panel. Squads stand in formation; tap a soldier to select the squad and tap the ground to march it. |
 
 Battles use a **3/4 top-down view like the original StarCraft**, and units face **8 directions** (5 drawn,
 3 mirrored). The leader editor's **Turn** and **Walk** buttons preview every direction.
@@ -42,6 +43,15 @@ leader is still the code-drawn placeholder.
 Remaining placeholders are pixel art drawn in code. Every clothing and gear piece is its own layer, and
 real sprites replace placeholders **one piece at a time** as they're added: see
 [`assets/README.md`](assets/README.md) for the folder layout, naming and the sheet-slicing tools.
+
+**Soldiers and squads (0.12.0):** the first army. A soldier design (blueprint) sets the look and gear every
+soldier of its squads shares; its gear cost sets the squad size (cheap soldiers come 8 to a squad, pricier ones
+6 or 4). Raising a squad takes that many people from the village (each Hut houses 4); disbanding gives them
+back. Changing a design re-equips its squads. The squad leader carries a pennant in the tribe's color.
+Weapon tiles use the icons from Luke's soldier weapon sheet; arrows, sling stones and thrown knives fly with
+their art; and every swing picks one of three attacks for its weapon (spear: thrust, sweep, overhead stab;
+club and axe: swing, overhead smash, sweep). Soldier armor, headgear, capes and arm guards in 5 directions
+are coming as new sheets; until then soldiers wear the leader's clothing art.
 
 **Creator screens (0.11.0):** the leader and hut designers now use Luke's ChatGPT screen mockups. Painted
 tabs on the left pick a category (leader: Body, Hair, Facial hair, War paint, Clothing, Accessories, Weapons;

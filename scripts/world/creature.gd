@@ -9,6 +9,7 @@ extends Node2D
 signal died(creature: Node2D)
 
 const Figure = preload("res://scripts/render/figure.gd")
+const AppearanceCatalog = preload("res://scripts/data/appearance_catalog.gd")
 const Directions = preload("res://scripts/render/directions.gd")
 const UnitStats = preload("res://scripts/data/unit_stats.gd")
 const Projectile = preload("res://scripts/world/projectile.gd")
@@ -57,6 +58,11 @@ var move_target = null  # Vector2 or null
 var target = null  # creature or null
 var dir := Directions.S  # facing, 0-7 (see directions.gd)
 var selected := false
+## The squad a soldier belongs to ("" = none); the squad leader carries the tribe's pennant.
+var squad_id := ""
+var squad_leader := false
+## Which of its weapon's attacks the current swing plays (see Figure.ATTACK_VARIANTS).
+var attack_variant := 0
 
 var _cooldown := 0.0
 var _walk_t := 0.0
@@ -237,6 +243,7 @@ func _separate(delta: float) -> void:
 func _attack(enemy) -> void:
 	_cooldown = attack_interval
 	_swing_t = Figure.ATTACK_TIME
+	attack_variant = _rng.randi_range(0, 2)
 	if ranged:
 		var shot := Projectile.new()
 		shot.position = position + BODY_CENTER
@@ -244,6 +251,7 @@ func _attack(enemy) -> void:
 		shot.source = self
 		shot.damage = damage
 		shot.damage_type = damage_type
+		shot.piece = Projectile.piece_for(str(gear.get("main_hand", "")))
 		get_parent().add_child(shot)
 	else:
 		enemy.take_hit(damage, damage_type, false, self)
@@ -284,7 +292,9 @@ func _draw() -> void:
 		if kind == "wolf":
 			Figure.draw_wolf(self, Vector2.ZERO, PX, dir, _walk_t, _swing_t)
 		else:
-			Figure.draw_human(self, Vector2.ZERO, PX, look, gear, dir, _walk_t, _swing_t)
+			Figure.draw_human(self, Vector2.ZERO, PX, look, gear, dir, _walk_t, _swing_t, attack_variant)
+	if squad_leader:
+		_draw_pennant()
 	if hp < max_hp or is_hero:
 		var w := 30.0
 		var top := -56.0
@@ -305,3 +315,13 @@ func _leave_corpse() -> void:
 	body.scale_factor = PX / Figure.REF_PX
 	body.position = position
 	get_parent().add_child(body)
+
+
+## The squad leader's badge: a pennant in the tribe's color on a pole over the shoulder.
+func _draw_pennant() -> void:
+	var col := AppearanceCatalog.color_of("tribe_color", str(look.get("tribe_color", "ochre")))
+	var x := -9.0 if Directions.is_mirrored(dir) else 9.0
+	draw_line(Vector2(x, -14), Vector2(x, -66), Color(0.36, 0.24, 0.13), 2.0)
+	var side := -1.0 if Directions.is_mirrored(dir) else 1.0
+	draw_colored_polygon(PackedVector2Array([Vector2(x, -66), Vector2(x + 16 * side, -61), Vector2(x, -55)]), col)
+	draw_line(Vector2(x, -66), Vector2(x + 16 * side, -61), col.darkened(0.35), 1.0)

@@ -3,7 +3,7 @@
 
     python3 tools/ui/build_screens.py      (needs opencv-contrib-python-headless)
 
-The mockups (assets/source/ui_leader_mockup.png, ui_hut_mockup.png) are full
+The mockups (assets/source/ui_leader_mockup.png, ui_hut_mockup.png, ui_soldier_mockup.png) are full
 screens with a sample leader / hut and sample options painted in. The game
 keeps the painted frame, title, tabs and buttons, and draws everything that
 changes on top, so this tool:
@@ -29,8 +29,7 @@ SCREENS = {
         stage=(320, 125, 905, 735),  # x0, y0, x1, y1 of the scene
         subject=(540, 230, 755, 662),  # where the sample figure is
         subject_kind="skin",
-        panel=(918, 105, 1498, 722),
-        viewbar=(400, 776, 1072, 922),
+        clear=[(918, 105, 1498, 722), (400, 776, 1072, 922)],  # options panel, view strip
         slate=(965, 548, 1420, 655),  # an empty bit of panel to fill with
         tab=(45, 145, 302, 237), plain_tab=(45, 250, 302, 332),
         fill_bands=None,
@@ -39,16 +38,32 @@ SCREENS = {
         stage=(312, 140, 990, 742),
         subject=(378, 228, 908, 640),
         subject_kind="hut",
-        panel=(1018, 48, 1492, 822),
-        viewbar=(262, 787, 900, 922),
+        clear=[(1018, 48, 1492, 822), (262, 787, 900, 922)],
         slate=None,  # borrowed from the leader screen
         tab=(27, 143, 285, 237), plain_tab=(27, 250, 285, 340),
         fill_bands=[(400, 742), (140, 520)],  # ground first, then trees and river
     ),
+    "soldier": dict(
+        stage=(560, 125, 1062, 705),
+        subject=None,
+        subject_kind="boxes",
+        # The sample soldier: spear, body, shield (x0, y0, x1, y1 boxes, rounded off).
+        boxes=[(650, 160, 712, 625), (668, 285, 842, 655), (790, 360, 885, 535), (690, 600, 850, 660)],
+        clear=[(220, 145, 553, 493), (1076, 108, 1500, 698), (234, 742, 692, 862), (709, 742, 1222, 862),
+               (1244, 748, 1500, 860)],
+        slate=None,
+        tab=(38, 122, 198, 195), plain_tab=(38, 205, 198, 272),
+        fill_bands=[(470, 705), (125, 520)],  # ground and stones first, then trees, lake and mountains
+    ),
 }
 
 
-def subject_mask(img, box, kind):
+def subject_mask(img, box, kind, boxes=None):
+    if kind == "boxes":
+        m = np.zeros(img.shape[:2], np.uint8)
+        for bx0, by0, bx1, by1 in boxes:
+            cv2.rectangle(m, (bx0, by0), (bx1, by1), 255, -1)
+        return cv2.dilate(m, np.ones((7, 7), np.uint8))
     x0, y0, x1, y1 = box
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     sub = hsv[y0:y1, x0:x1]
@@ -137,15 +152,15 @@ def main():
     slate_patch = leader_src[sy0:sy1, sx0:sx1].copy()
     for name, s in SCREENS.items():
         img = cv2.imread(os.path.join(SRC, "ui_%s_mockup.png" % name))
-        mask = subject_mask(img, s["subject"], s["subject_kind"])
+        mask = subject_mask(img, s["subject"], s["subject_kind"], s.get("boxes"))
         if s["fill_bands"]:
             for band in s["fill_bands"]:
                 x0, _, x1, _ = s["stage"]
                 img, mask = inpaint(img, mask, (x0, band[0], x1, band[1]), band)
         else:
             img, mask = inpaint(img, mask, s["stage"])
-        tile(img, s["panel"], slate_patch)
-        tile(img, s["viewbar"], slate_patch)
+        for box in s["clear"]:
+            tile(img, box, slate_patch)
         plain_tab(img, s["tab"], s["plain_tab"])
         cv2.imwrite(os.path.join(OUT, "%s_screen.png" % name), img)
         print("wrote assets/ui/%s_screen.png" % name)
