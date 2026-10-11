@@ -9,7 +9,7 @@ Stone Age to the space age. Built in **Godot 4** (GDScript), 2D pixel art, lands
 
 Both links rebuild automatically about 5 minutes after every push to `main`.
 
-## What's playable now (v0.10.0)
+## What's playable now (v0.11.0)
 
 | Prototype | Opening phase | What you can do |
 | --- | --- | --- |
@@ -42,6 +42,13 @@ leader is still the code-drawn placeholder.
 Remaining placeholders are pixel art drawn in code. Every clothing and gear piece is its own layer, and
 real sprites replace placeholders **one piece at a time** as they're added: see
 [`assets/README.md`](assets/README.md) for the folder layout, naming and the sheet-slicing tools.
+
+**Creator screens (0.11.0):** the leader and hut designers now use Luke's ChatGPT screen mockups. Painted
+tabs on the left pick a category (leader: Body, Hair, Facial hair, War paint, Clothing, Accessories, Weapons;
+huts: Shape, Roof, Walls, Doorway, Decorations), the panel on the right shows every option as a tile with a
+live picture of it, the stage shows the leader on the stone circle (or the hut in its clearing), the view strip
+turns the leader (plus Walk and Attack previews), and Randomize / Confirm / Cancel are the painted buttons.
+The Chief's Hut and the Hut share the hut screen. Facial hair is waiting on beard art.
 
 **Walk and attack animation (0.10.0):** Luke's animation template sheet (a faceless mannequin walking
 in 5 views, plus spear, club and axe attacks) now drives the leader. Walking swaps the body's legs below the

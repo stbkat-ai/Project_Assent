@@ -1,31 +1,59 @@
 extends Control
-## Opening phase 3: design a building type (the Chief's Hut, then the Hut).
-## Works like the leader creator: a base model with interchangeable parts.
+## Opening phase 3: design a building type (the Chief's Hut, then the Hut) on
+## Luke's "Create hut" screen (creator_screen.gd); both huts use the same
+## screen. Like the leader creator: a base shape with interchangeable parts.
 
 signal done(action: String)  # "next" or "back"
 
 const GameState = preload("res://scripts/game_state.gd")
 const BuildingCatalog = preload("res://scripts/data/building_catalog.gd")
+const PartDraw = preload("res://scripts/render/building_draw.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
+const CreatorScreen = preload("res://scripts/ui/creator_screen.gd")
+
+## Where things sit on the hut screen art (assets/ui/hut_screen.png), in art pixels.
+const LAYOUT := {
+	"tabs": [Rect2(27, 143, 258, 94), Rect2(27, 250, 258, 90), Rect2(27, 352, 258, 91), Rect2(27, 455, 258, 93),
+		Rect2(27, 560, 258, 95)],
+	"randomize": Rect2(28, 910, 300, 85),
+	"confirm": Rect2(1075, 905, 215, 90),
+	"cancel": Rect2(1305, 910, 200, 85),
+	"stage": Rect2(312, 120, 683, 630),
+	"panel": Rect2(1018, 48, 474, 774),
+	"viewbar": Rect2(262, 787, 638, 135),
+}
+## Tab -> [header, slot] rows it shows.
+const TABS := [
+	[["Shape", "shape"]],
+	[["Roof", "roof"]],
+	[["Walls", "walls"]],
+	[["Doorway", "door"]],
+	[["Roof crest", "crest"], ["Hanging", "hang"], ["Yard", "yard"]],
+]
+const SHAPE_TILE := Vector2(210, 190)
+const PART_TILE := Vector2(140, 150)
 
 
+## The building standing in the middle of the stage.
 class Preview extends Control:
 	const BuildingDraw = preload("res://scripts/render/building_draw.gd")
 	var type_id := "hut"
 	var design: Dictionary = {}
 
 	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.42, 0.50, 0.27))
-		# The building rises about 1.5 x its footprint width above the ground point.
-		var width := minf(size.x * 0.5, size.y * 0.45)
-		BuildingDraw.draw_building(self, type_id, design, Vector2(size.x * 0.45, size.y * 0.8), width)
+		var width := minf(size.x * 0.5, size.y * 0.55)
+		BuildingDraw.draw_building(self, type_id, design, Vector2(size.x * 0.5, size.y * 0.84), width)
 
 
 var state: GameState
 var type_id := "hut"
 var _design: Dictionary = {}
+var _screen: CreatorScreen
 var _preview: Preview
-var _refreshers: Array = []
+var _front_tile = null
+var _groups: Array = []  # {"slot", "tiles"}
+var _rng := RandomNumberGenerator.new()
+static var _used_rects := {}
 
 
 func setup(game_state: GameState, building_type: String) -> void:
@@ -38,116 +66,151 @@ func setup(game_state: GameState, building_type: String) -> void:
 
 
 func _ready() -> void:
-	theme = UiStyle.make_theme()
 	UiStyle.full_rect(self)
-	var info := BuildingCatalog.get_type(type_id)
+	_rng.randomize()
+	_screen = CreatorScreen.new()
+	_screen.configure("res://assets/ui/hut_screen.png", LAYOUT)
+	add_child(_screen)
 
-	var bg := ColorRect.new()
-	bg.color = UiStyle.BG
-	add_child(UiStyle.full_rect(bg))
-	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 16)
-	add_child(UiStyle.full_rect(margin))
-	var outer := VBoxContainer.new()
-	outer.add_theme_constant_override("separation", 10)
-	margin.add_child(outer)
-	outer.add_child(UiStyle.label("Design your %s" % info.get("name", "building"), 26, UiStyle.GOLD))
-	var desc := UiStyle.label(str(info.get("desc", "")), 18, UiStyle.MUTED)
-	outer.add_child(desc)
-
-	var main := HBoxContainer.new()
-	main.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	main.add_theme_constant_override("separation", 16)
-	outer.add_child(main)
 	_preview = Preview.new()
 	_preview.type_id = type_id
-	_preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_preview.custom_minimum_size = Vector2(240, 200)
-	main.add_child(_preview)
+	_preview.size = Rect2(LAYOUT["stage"]).size
+	_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_screen.stage.add_child(_preview)
+	var info := BuildingCatalog.get_type(type_id)
+	var title := UiStyle.label("%s\n%s" % [info.get("name", "Building"), info.get("desc", "")], 24)
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.custom_minimum_size = Vector2(420, 0)
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0.08, 0.07, 0.06, 0.72)
+	box.set_content_margin_all(10)
+	box.set_corner_radius_all(4)
+	title.add_theme_stylebox_override("normal", box)
+	title.position = Vector2(12, 12)
+	_screen.stage.add_child(title)
 
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	main.add_child(scroll)
-	var list := VBoxContainer.new()
-	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 6)
-	scroll.add_child(list)
-	list.add_child(UiStyle.label("Parts (cosmetic: every %s you build will look like this)" % str(info.get("name", "")).to_lower(), 18, UiStyle.MUTED))
-	for slot_pair in BuildingCatalog.part_slots():
-		_add_choice_row(list, str(slot_pair[1]), str(slot_pair[0]))
+	# Only the front view has art so far.
+	var front := CreatorScreen.Tile.new()
+	front.custom_minimum_size = Vector2(120, 118)
+	front.caption = "Front"
+	front.chosen = true
+	front.draw_fn = func(ci: CanvasItem, r: Rect2) -> void:
+		PartDraw.draw_building(ci, type_id, _design, Vector2(r.get_center().x, r.end.y - r.size.y * 0.12), r.size.x * 0.48)
+	_screen.viewbar.add_child(front)
+	_front_tile = front
+	var note := UiStyle.label("Other views (right, back, left)\narrive with more hut art.", 22, UiStyle.MUTED)
+	_screen.viewbar.add_child(note)
 
-	var buttons := HBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 12)
-	outer.add_child(buttons)
-	var back := UiStyle.button("Back", 120)
-	back.pressed.connect(func() -> void:
-		state.save_game()
-		done.emit("back"))
-	buttons.add_child(back)
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	buttons.add_child(spacer)
-	var next := UiStyle.button("Done  >", 200)
-	next.pressed.connect(func() -> void:
-		state.save_game()
-		done.emit("next"))
-	buttons.add_child(next)
+	_screen.tab_selected.connect(_show_tab)
+	_screen.action.connect(func(act: String) -> void:
+		match act:
+			"randomize":
+				_randomize()
+			"confirm":
+				state.save_game()
+				done.emit("next")
+			"cancel":
+				state.save_game()
+				done.emit("back"))
+	_screen.select_tab(0)
 	_changed()
 
 
-## The options for a slot depend on the chosen shape, so they are looked up each time.
-func _options(key: String) -> Array:
-	return BuildingCatalog.options(key, str(_design.get("shape", "round")), type_id)
+func _shape() -> String:
+	return str(_design.get("shape", "round"))
 
 
-func _add_choice_row(parent: Control, label_text: String, key: String) -> void:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	var lab := UiStyle.label(label_text, 20)
-	lab.custom_minimum_size = Vector2(130, 0)
-	row.add_child(lab)
-	var prev := UiStyle.button("<")
-	var value := UiStyle.label("", 20)
-	value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	value.clip_text = true
-	var next := UiStyle.button(">")
-	row.add_child(prev)
-	row.add_child(value)
-	row.add_child(next)
-	parent.add_child(row)
-	var refresh := func() -> void:
-		var id := str(_design.get(key, ""))
-		value.text = "?"
-		for option in _options(key):
-			if str(option[0]) == id:
-				value.text = str(option[1])
-	_refreshers.append(refresh)
-	prev.pressed.connect(func() -> void:
-		_cycle(key, _options(key), -1)
-		_changed())
-	next.pressed.connect(func() -> void:
-		_cycle(key, _options(key), 1)
-		_changed())
+func _show_tab(index: int) -> void:
+	_screen.clear_panel()
+	_groups.clear()
+	for row in TABS[index]:
+		var slot: String = row[1]
+		_screen.add_header(str(row[0]))
+		var options := BuildingCatalog.options(slot, _shape(), type_id)
+		var tile_size := SHAPE_TILE if slot == "shape" else PART_TILE
+		var draw_tile := func(ci: CanvasItem, r: Rect2, id: String) -> void: _draw_option(ci, r, slot, id)
+		var pick := func(id: String) -> void: _pick(slot, id)
+		var tiles := _screen.add_tiles(options, str(_design.get(slot, "")), tile_size, draw_tile, pick)
+		_groups.append({"slot": slot, "tiles": tiles})
+	if index == 1 and type_id == "chief_hut":
+		_screen.add_note("The decorated chieftain roofs are only for the Chief's Hut.")
+	_refresh_tiles()
 
 
-func _cycle(key: String, options: Array, direction: int) -> void:
-	var index := 0
-	for i in options.size():
-		if str(options[i][0]) == str(_design.get(key, "")):
-			index = i
-	_design[key] = str(options[posmod(index + direction, options.size())][0])
+## A shape tile shows the whole hut in that shape; a part tile shows just the part.
+func _draw_option(ci: CanvasItem, r: Rect2, slot: String, id: String) -> void:
+	if slot == "shape":
+		var trial := _design.duplicate()
+		trial["shape"] = id
+		PartDraw.draw_building(ci, type_id, BuildingCatalog.normalized(type_id, trial),
+			Vector2(r.get_center().x, r.end.y - r.size.y * 0.1), r.size.x * 0.42)
+		return
+	if id == "none":
+		var c := r.get_center()
+		var rad := minf(r.size.x, r.size.y) * 0.28
+		var col := CreatorScreen.HEADER.darkened(0.3)
+		ci.draw_arc(c, rad, 0.0, TAU, 32, col, 5.0)
+		ci.draw_line(c + Vector2(-rad, rad) * 0.7, c + Vector2(rad, -rad) * 0.7, col, 5.0)
+		return
+	var tex = PartDraw.part_texture(_shape(), slot, id)
+	if tex == null:
+		return
+	var used := _used_rect(tex)
+	var zoom := minf(r.size.x / used.size.x, r.size.y / used.size.y) * 0.95
+	var dest := Rect2(r.get_center() - used.size * zoom / 2.0, used.size * zoom)
+	ci.draw_texture_rect_region(tex, dest, used)
+
+
+## The part's drawn pixels within its shared canvas (cached).
+func _used_rect(tex: Texture2D) -> Rect2:
+	var key := tex.resource_path
+	if not _used_rects.has(key):
+		var r := Rect2(Vector2.ZERO, tex.get_size())
+		var img := tex.get_image()
+		if img != null:
+			var used := img.get_used_rect()
+			if used.size.x > 0 and used.size.y > 0:
+				r = Rect2(used)
+		_used_rects[key] = r
+	return _used_rects[key]
+
+
+func _pick(slot: String, id: String) -> void:
+	_design[slot] = id
 	# A new shape has its own walls, roofs, doorways and crests.
 	var fixed := BuildingCatalog.normalized(type_id, _design)
 	for k in fixed:
 		_design[k] = fixed[k]
+	if slot == "shape":
+		_show_tab(_screen.current_tab)
+	_changed()
+
+
+func _randomize() -> void:
+	for slot_pair in BuildingCatalog.part_slots():
+		var slot: String = slot_pair[0]
+		var options := BuildingCatalog.options(slot, _shape(), type_id)
+		_design[slot] = str(options[_rng.randi_range(0, options.size() - 1)][0])
+		var fixed := BuildingCatalog.normalized(type_id, _design)
+		for k in fixed:
+			_design[k] = fixed[k]
+	_show_tab(_screen.current_tab)
+	_changed()
+
+
+func _refresh_tiles() -> void:
+	for group in _groups:
+		var current := str(_design.get(group["slot"], ""))
+		var tiles: Dictionary = group["tiles"]
+		for id in tiles:
+			var tile = tiles[id]
+			tile.chosen = str(id) == current
+			tile.queue_redraw()
 
 
 func _changed() -> void:
-	for refresh in _refreshers:
-		refresh.call()
+	_refresh_tiles()
 	_preview.design = _design
 	_preview.queue_redraw()
+	if _front_tile != null:
+		_front_tile.queue_redraw()

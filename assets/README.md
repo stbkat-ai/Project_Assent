@@ -40,6 +40,12 @@ a GIF of both. Re-run `build_walk.py` after `tools/paper_doll/build.py`.
 | `buildings` | `<shape>_<slot>_<id>`, e.g. `round_walls_log_ring`, `long_roof_hide_gable`, `any_yard_fire_pit` (ids in the generated `scripts/data/building_parts.gd`) | Only the `s` view. Built by `tools/huts/build.py` from `assets/source/sheet_huts_1.png` and `sheet_huts_2.png`: every part sits on one shared 120 x 150 canvas, so the layers stack. To add parts, extend `PARTS` in the tool and re-run it; `tools/huts/preview.py` renders sample huts. |
 | `scenery` | see `scripts/data/scenery_catalog.gd` (oaks, pines, birches, bushes, rocks, grass, ferns, flowers, mushrooms, stumps, log) | Only the `s` view is used; maps mirror them at random. |
 
+The creator screens are `assets/ui/leader_screen.png` and `assets/ui/hut_screen.png`, built by
+`tools/ui/build_screens.py` from Luke's mockups (`assets/source/ui_*_mockup.png`): it paints the sample leader
+and hut out of the scene, clears the options panel and view strip, and un-highlights the first tab. Needs
+`pip install opencv-contrib-python-headless`. Tap-zone coordinates live in `LAYOUT` in
+`scripts/ui/leader_editor.gd` and `scripts/ui/building_editor.gd`.
+
 The title screen art is `assets/ui/title.png` (its painted buttons are tap zones, see
 `scripts/ui/title_screen.gd`). Original ChatGPT sheets are kept in `assets/source/` (not shipped in the game).
 

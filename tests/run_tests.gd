@@ -18,6 +18,7 @@ const SCRIPTS := [
 	"res://scripts/data/wildlife_catalog.gd",
 	"res://scripts/render/building_draw.gd",
 	"res://scripts/ui/building_editor.gd",
+	"res://scripts/ui/creator_screen.gd",
 	"res://scripts/world/building.gd",
 	"res://scripts/world/map_controls.gd",
 	"res://scripts/world/village.gd",
@@ -243,6 +244,8 @@ func _test_art(sprites, scenery) -> void:
 	_check(float(fig.attack_pose("swing", 0.35)[0]) < -1.0, "a club or axe is raised back before the strike")
 	_check(float(fig.attack_pose("thrust", 0.55)[1]) > 4.0, "a spear is pushed forward in the thrust")
 	_check(ResourceLoader.exists("res://assets/ui/title.png"), "title screen art exists")
+	_check(ResourceLoader.exists("res://assets/ui/leader_screen.png") and ResourceLoader.exists("res://assets/ui/hut_screen.png"),
+		"leader and hut creator screen art exists")
 	var bodies_ok := true
 	for skin in ["skin1", "skin2", "skin3", "skin4", "skin5", "skin6"]:
 		for sex in ["male", "female"]:
