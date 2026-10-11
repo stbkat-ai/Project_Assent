@@ -18,7 +18,7 @@ https://claude.ai/code/artifact/c152695d-a333-43db-9af9-d9aa2f2796e3 — record 
 ## Testing / CI
 - `tests/run_tests.gd` loads every script (catches parse errors) and checks the rules. Add new scripts to
   its `SCRIPTS` list and add tests for new rules.
-- `.github/workflows/build.yml`: on every push to `main` → tests → web export + Android debug APK →
+- `.github/workflows/build.yml`: on every push to `main` → tests → web export + Android debug APK → `gh-pages` branch →
   GitHub Pages (https://stbkat-ai.github.io/Project_Assent/, APK at `/project-ascent.apk`).
 - Godot can't be downloaded inside the Claude cloud container, so CI is the test loop: push, then read
   the Actions run and its logs, and fix until green.
