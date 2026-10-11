@@ -94,20 +94,23 @@ func _ready() -> void:
 	_screen.stage.add_child(_stats)
 
 	_screen.tab_selected.connect(_show_tab)
-	_screen.action.connect(func(act: String) -> void:
-		match act:
-			"randomize":
-				_randomize_look()
-			"confirm":
-				state.save_game()
-				done.emit("wilderness")
-			"cancel":
-				state.save_game()
-				done.emit("menu"))
+	_screen.action.connect(_on_action)
 	_build_viewbar()
 	_screen.select_tab(0)
 	_changed()
 
+
+
+func _on_action(act: String) -> void:
+	match act:
+		"randomize":
+			_randomize_look()
+		"confirm":
+			state.save_game()
+			done.emit("wilderness")
+		"cancel":
+			state.save_game()
+			done.emit("menu")
 
 # --- Tabs ------------------------------------------------------------------------
 

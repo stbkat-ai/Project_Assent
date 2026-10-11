@@ -102,16 +102,7 @@ func _ready() -> void:
 	_screen.viewbar.add_child(note)
 
 	_screen.tab_selected.connect(_show_tab)
-	_screen.action.connect(func(act: String) -> void:
-		match act:
-			"randomize":
-				_randomize()
-			"confirm":
-				state.save_game()
-				done.emit("next")
-			"cancel":
-				state.save_game()
-				done.emit("back"))
+	_screen.action.connect(_on_action)
 	_screen.select_tab(0)
 	_changed()
 
@@ -214,3 +205,15 @@ func _changed() -> void:
 	_preview.queue_redraw()
 	if _front_tile != null:
 		_front_tile.queue_redraw()
+
+
+func _on_action(act: String) -> void:
+	match act:
+		"randomize":
+			_randomize()
+		"confirm":
+			state.save_game()
+			done.emit("next")
+		"cancel":
+			state.save_game()
+			done.emit("back")
