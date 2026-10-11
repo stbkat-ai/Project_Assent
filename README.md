@@ -9,15 +9,19 @@ Stone Age to the space age. Built in **Godot 4** (GDScript), 2D pixel art, lands
 
 Both links rebuild automatically about 5 minutes after every push to `main`.
 
-## What's playable now (v0.1.1)
+## What's playable now (v0.2.0)
 
 | Prototype | Opening phase | What you can do |
 | --- | --- | --- |
 | **A. The leader** | 1. The first hero | Design your tribal leader: body, skin, hair, Shaman/Caveman clothing pieces, war paint, tribe color, and gear (armor, weapon, shield). Gear sets the stats; looks are cosmetic. |
 | **B. The wilderness** | 2. Into the wilderness | Walk your leader across a wild map, fight wolves and hostile cavemen, and claim the clearing for your village. |
 
-All art is placeholder pixel art drawn in code. Every clothing and gear piece is its own layer, so the
-real sprites can replace it piece by piece later.
+Battles use a **3/4 top-down view like the original StarCraft**, and units face **8 directions** (5 drawn,
+3 mirrored). The leader editor's **Turn** and **Walk** buttons preview every direction.
+
+All art is still placeholder pixel art drawn in code. Every clothing and gear piece is its own layer, and
+real sprites replace placeholders **one piece at a time** as they're added: see
+[`assets/README.md`](assets/README.md) for the folder layout, naming and the sheet-slicing tools.
 
 ### Controls
 
@@ -39,7 +43,9 @@ main.tscn                  entry scene (just runs scripts/main.gd)
 scripts/main.gd            screen manager + main menu
 scripts/game_state.gd      saved progress (JSON in user://save.json, versioned)
 scripts/data/              gear catalog, appearance catalog, unit_stats (gear -> stats, squad size, damage)
-scripts/render/figure.gd   placeholder pixel-art drawing, one layer per clothing/gear piece
+scripts/render/            figure (layered 3/4-view drawing), directions (8 dirs -> 5 views), sprite_library
+assets/sprites/            real art; overrides placeholders piece by piece (see assets/README.md)
+tools/                     slice_sheet.py and place_sprite.py: turn concept sheets into game sprites
 scripts/ui/                leader editor (Prototype A), shared UI style
 scripts/world/             wilderness map (Prototype B), creatures, projectiles
 tests/run_tests.gd         headless tests (run in CI on every push)

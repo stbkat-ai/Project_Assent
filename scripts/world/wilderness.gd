@@ -13,6 +13,7 @@ const Creature = preload("res://scripts/world/creature.gd")
 const UnitStats = preload("res://scripts/data/unit_stats.gd")
 const AppearanceCatalog = preload("res://scripts/data/appearance_catalog.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
+const Scenery = preload("res://scripts/world/scenery.gd")
 
 const WORLD := Rect2(0, 0, 3000, 2000)
 const START := Vector2(320, 1600)
@@ -22,6 +23,9 @@ const SITE_GUARD_RADIUS := 480.0
 const TAP_SLOP := 14.0
 const MIN_ZOOM := 0.6
 const MAX_ZOOM := 2.4
+
+## In 3/4 top-down view, circles on the ground look squashed vertically.
+const GROUND_SQUASH := 0.6
 
 const GROUND := Color(0.29, 0.40, 0.20)
 const GROUND_DARK := Color(0.24, 0.34, 0.17)
@@ -63,6 +67,10 @@ func _ready() -> void:
 	_units = Node2D.new()
 	_units.y_sort_enabled = true
 	add_child(_units)
+	for t in _trees:
+		_add_scenery("tree", t[0], t[1])
+	for r in _rocks:
+		_add_scenery("rock", r[0], r[1])
 
 	hero = _spawn_human(START, "player", state.leader["look"], state.leader["gear"], true)
 	hero.display_name = str(state.leader["name"])
@@ -104,6 +112,14 @@ func _spawn_human(pos: Vector2, team: String, look: Dictionary, gear: Dictionary
 	c.died.connect(_on_creature_died)
 	_units.add_child(c)
 	return c
+
+
+func _add_scenery(kind: String, pos: Vector2, size: float) -> void:
+	var s := Scenery.new()
+	s.kind = kind
+	s.size = size
+	s.position = pos
+	_units.add_child(s)
 
 
 func _spawn_caveman(pos: Vector2, guards_site: bool) -> void:
@@ -176,7 +192,8 @@ func _guards_left() -> int:
 func _update_objective() -> void:
 	if _over:
 		return
-	var at_site := hero.position.distance_to(SITE) <= SITE_RADIUS
+	var offset := hero.position - SITE
+	var at_site := Vector2(offset.x, offset.y / GROUND_SQUASH).length() <= SITE_RADIUS
 	var guards := _guards_left()
 	if guards > 0:
 		if at_site or hero.position.distance_to(SITE) < SITE_GUARD_RADIUS:
@@ -205,28 +222,22 @@ func _draw() -> void:
 	draw_rect(WORLD, GROUND)
 	for p in _tufts:
 		draw_rect(Rect2(p, Vector2(3, 5)), GROUND_DARK)
-	for r in _rocks:
-		draw_circle(r[0], r[1], Color(0.45, 0.44, 0.41))
-		draw_circle(r[0] + Vector2(-2, -2), r[1] * 0.6, Color(0.55, 0.54, 0.50))
 
-	# The clearing.
-	draw_circle(SITE, SITE_RADIUS, Color(0.42, 0.50, 0.27))
+	# The clearing: a circle lying on the ground.
 	var pulse := 0.5 + 0.5 * sin(_time * 3.0)
-	draw_arc(SITE, SITE_RADIUS, 0.0, TAU, 64, Color(0.95, 0.80, 0.30, 0.4 + 0.4 * pulse), 3.0)
+	draw_set_transform(SITE, 0.0, Vector2(1.0, GROUND_SQUASH))
+	draw_circle(Vector2.ZERO, SITE_RADIUS, Color(0.42, 0.50, 0.27))
+	draw_arc(Vector2.ZERO, SITE_RADIUS, 0.0, TAU, 64, Color(0.95, 0.80, 0.30, 0.4 + 0.4 * pulse), 3.0)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	draw_rect(Rect2(SITE + Vector2(-2, -60), Vector2(4, 60)), Color(0.45, 0.31, 0.18))
 	draw_colored_polygon(PackedVector2Array([SITE + Vector2(2, -60), SITE + Vector2(34, -50), SITE + Vector2(2, -40)]),
 		Color(0.85, 0.64, 0.25))
 
-	for t in _trees:
-		var p: Vector2 = t[0]
-		var s: float = t[1]
-		draw_rect(Rect2(p + Vector2(-3, -s * 0.4), Vector2(6, s * 0.9)), Color(0.36, 0.25, 0.15))
-		draw_circle(p + Vector2(0, -s * 0.9), s, Color(0.17, 0.33, 0.15))
-		draw_circle(p + Vector2(-s * 0.3, -s * 1.1), s * 0.6, Color(0.22, 0.40, 0.18))
-
 	if _marker_t > 0.0:
-		var r := 6.0 + (1.0 - _marker_t) * 10.0
-		draw_arc(_marker_pos, r, 0.0, TAU, 24, Color(1, 1, 1, _marker_t), 2.0)
+		var r := 8.0 + (1.0 - _marker_t) * 12.0
+		draw_set_transform(_marker_pos, 0.0, Vector2(1.0, GROUND_SQUASH))
+		draw_arc(Vector2.ZERO, r, 0.0, TAU, 24, Color(1, 1, 1, _marker_t), 2.0)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 # --- Input -------------------------------------------------------------------

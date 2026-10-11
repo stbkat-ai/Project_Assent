@@ -9,11 +9,14 @@ const SCRIPTS := [
 	"res://scripts/data/gear_catalog.gd",
 	"res://scripts/data/appearance_catalog.gd",
 	"res://scripts/data/unit_stats.gd",
+	"res://scripts/render/directions.gd",
+	"res://scripts/render/sprite_library.gd",
 	"res://scripts/render/figure.gd",
 	"res://scripts/ui/ui_style.gd",
 	"res://scripts/ui/leader_editor.gd",
 	"res://scripts/world/creature.gd",
 	"res://scripts/world/projectile.gd",
+	"res://scripts/world/scenery.gd",
 	"res://scripts/world/wilderness.gd",
 ]
 
@@ -31,6 +34,12 @@ func _init() -> void:
 		_test_squad_size(stats)
 		_test_compute(stats)
 		_test_catalogs(gear, looks)
+	var dirs = load("res://scripts/render/directions.gd")
+	var sprites = load("res://scripts/render/sprite_library.gd")
+	var figure = load("res://scripts/render/figure.gd")
+	if dirs != null and sprites != null and figure != null:
+		_test_directions(dirs)
+		_test_sprites(sprites, figure)
 	print("\n%d passed, %d failed" % [_passes, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -110,3 +119,34 @@ func _test_catalogs(gear, looks) -> void:
 			if option[0] == look.get(field["key"]):
 				valid = true
 		_check(valid, "default look has a valid '%s'" % field["key"])
+
+
+func _test_directions(dirs) -> void:
+	print("Directions:")
+	_check(dirs.from_vector(Vector2(1, 0)) == 0, "right is east")
+	_check(dirs.from_vector(Vector2(0, 1)) == 2, "screen-down is south")
+	_check(dirs.from_vector(Vector2(0, -1)) == 6, "screen-up is north")
+	_check(dirs.from_vector(Vector2(-1, 1)) == 3, "down-left is south-west")
+	_check(dirs.from_vector(Vector2(-1, -1)) == 5, "up-left is north-west")
+	_check(dirs.from_vector(Vector2(10, -1)) == 0, "nearly right snaps to east")
+	var drawn := {}
+	for d in 8:
+		drawn[dirs.view_of(d)] = true
+	_check(drawn.size() == 5, "8 directions use exactly 5 drawn views")
+	_check(dirs.view_of(4) == "e" and dirs.is_mirrored(4), "west is east mirrored")
+	_check(dirs.view_of(3) == "se" and dirs.is_mirrored(3), "south-west is south-east mirrored")
+	_check(dirs.view_of(5) == "ne" and dirs.is_mirrored(5), "north-west is north-east mirrored")
+	_check(not dirs.is_mirrored(2) and not dirs.is_mirrored(6), "south and north are not mirrored")
+	_check(dirs.turn(7, 1) == 0 and dirs.turn(0, -1) == 7, "turning wraps around")
+
+
+func _test_sprites(sprites, figure) -> void:
+	print("Sprites:")
+	_check(sprites.frames("gear", "no_such_piece", "s", "walk").is_empty(), "missing art falls back to placeholders")
+	_check(sprites.frame_at("gear", "no_such_piece", "s", "", 0.0) == null, "missing frame is null")
+	var p: Dictionary = figure.pieces({"sex": "female", "hair": "bald", "headwear": "none", "cloak": "fur_cloak"},
+		{"body": "leather_armor", "main_hand": "flail", "off_hand": "none_off"})
+	_check(p["body"][1] == "body_female", "body piece follows sex")
+	_check(p["hair"][1] == "", "bald draws no hair layer")
+	_check(p["headwear"][1] == "" and p["cloak"][1] == "fur_cloak", "clothing pieces map to sprite ids")
+	_check(p["armor"][1] == "leather_armor" and p["weapon"][1] == "flail" and p["shield"][1] == "", "gear maps to sprite ids")

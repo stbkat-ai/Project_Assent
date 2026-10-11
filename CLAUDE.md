@@ -13,6 +13,11 @@ https://claude.ai/code/artifact/c152695d-a333-43db-9af9-d9aa2f2796e3 — record 
   or give an explicit type. Loop variables over `get_nodes_in_group()` are re-bound untyped (`var other = node`).
 - Gear and looks are separate: gear sets stats (`scripts/data/unit_stats.gd`), looks are cosmetic.
 - Every drawable piece is its own layer in `scripts/render/figure.gd` so real sprites can replace it.
+- View is 3/4 top-down, 8 directions; only views s/se/e/ne/n are drawn, the rest mirrored
+  (`scripts/render/directions.gd`). Art lives in `assets/sprites/<category>/<piece>/<view>[_<anim>_<n>].png`
+  and overrides the placeholder automatically (`sprite_library.gd`). Art comes from Luke as ChatGPT concept
+  sheets: slice with `tools/slice_sheet.py`, check `_index.png`, show Luke the cut pieces, then
+  `tools/place_sprite.py`. Rules in `assets/README.md`.
 - Tabs for indentation.
 
 ## Testing / CI

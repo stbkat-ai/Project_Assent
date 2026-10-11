@@ -9,6 +9,7 @@ extends Node2D
 signal died(creature: Node2D)
 
 const Figure = preload("res://scripts/render/figure.gd")
+const Directions = preload("res://scripts/render/directions.gd")
 const UnitStats = preload("res://scripts/data/unit_stats.gd")
 const Projectile = preload("res://scripts/world/projectile.gd")
 
@@ -43,7 +44,7 @@ var home := Vector2.ZERO
 
 var move_target = null  # Vector2 or null
 var target = null  # creature or null
-var facing := 1
+var dir := Directions.S  # facing, 0-7 (see directions.gd)
 var selected := false
 
 var _cooldown := 0.0
@@ -191,8 +192,9 @@ func _step_toward(point: Vector2, delta: float) -> bool:
 
 
 func _face(point: Vector2) -> void:
-	if absf(point.x - position.x) > 2.0:
-		facing = 1 if point.x > position.x else -1
+	var to := point - position
+	if to.length() > 2.0:
+		dir = Directions.from_vector(to)
 
 
 ## Gently push apart units that stand on top of each other.
@@ -248,11 +250,14 @@ func take_hit(amount: int, dtype: String, from_range: bool, attacker) -> void:
 
 func _draw() -> void:
 	if selected:
-		draw_arc(Vector2.ZERO, 16.0, 0.0, TAU, 32, Color(0.95, 0.80, 0.30, 0.9), 2.0)
+		# A ring lying flat on the ground (an ellipse in 3/4 view).
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.5))
+		draw_arc(Vector2.ZERO, 18.0, 0.0, TAU, 32, Color(0.95, 0.80, 0.30, 0.9), 2.0)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if kind == "wolf":
-		Figure.draw_wolf(self, Vector2.ZERO, PX, facing, _walk_t, _swing_t)
+		Figure.draw_wolf(self, Vector2.ZERO, PX, dir, _walk_t, _swing_t)
 	else:
-		Figure.draw_human(self, Vector2.ZERO, PX, look, gear, facing, _walk_t, _swing_t)
+		Figure.draw_human(self, Vector2.ZERO, PX, look, gear, dir, _walk_t, _swing_t)
 	if _hurt_t > 0.0:
 		draw_rect(Rect2(Vector2(-12, -38), Vector2(24, 38)), Color(1, 0.2, 0.1, 0.35))
 	if hp < max_hp or is_hero:

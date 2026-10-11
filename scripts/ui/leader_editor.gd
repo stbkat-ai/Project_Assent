@@ -15,15 +15,23 @@ const UiStyle = preload("res://scripts/ui/ui_style.gd")
 ## Big live preview of the leader.
 class Preview extends Control:
 	const Figure = preload("res://scripts/render/figure.gd")
+	const Directions = preload("res://scripts/render/directions.gd")
 	var look: Dictionary = {}
 	var gear: Dictionary = {}
+	var dir := Directions.SE
+	var walking := false
+	var _t := 0.0
+
+	func _process(delta: float) -> void:
+		if walking:
+			_t += delta
+			queue_redraw()
 
 	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.13, 0.15, 0.11))
-		var px := minf(size.x / 16.0, size.y / 24.0)
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.20, 0.27, 0.15))
+		var px := minf(size.x / 16.0, size.y / 26.0)
 		var origin := Vector2(size.x / 2.0, size.y / 2.0 + 10.0 * px)
-		draw_rect(Rect2(Vector2(0, origin.y), Vector2(size.x, size.y - origin.y)), Color(0.20, 0.27, 0.15))
-		Figure.draw_human(self, origin, px, look, gear, 1, 0.0, 0.0)
+		Figure.draw_human(self, origin, px, look, gear, dir, _t if walking else 0.0, 0.0)
 
 
 var state: GameState
@@ -73,6 +81,25 @@ func _ready() -> void:
 	_preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_preview.custom_minimum_size = Vector2(200, 180)
 	left.add_child(_preview)
+	var turn_row := HBoxContainer.new()
+	turn_row.add_theme_constant_override("separation", 8)
+	left.add_child(turn_row)
+	var turn_left := UiStyle.button("< Turn", 110)
+	turn_left.pressed.connect(func() -> void:
+		_preview.dir = posmod(_preview.dir - 1, 8)
+		_preview.queue_redraw())
+	turn_row.add_child(turn_left)
+	var walk := UiStyle.button("Walk", 90)
+	walk.toggle_mode = true
+	walk.toggled.connect(func(on: bool) -> void:
+		_preview.walking = on
+		_preview.queue_redraw())
+	turn_row.add_child(walk)
+	var turn_right := UiStyle.button("Turn >", 110)
+	turn_right.pressed.connect(func() -> void:
+		_preview.dir = posmod(_preview.dir + 1, 8)
+		_preview.queue_redraw())
+	turn_row.add_child(turn_right)
 	_stats_label = UiStyle.label("", 18)
 	_stats_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	left.add_child(_stats_label)
