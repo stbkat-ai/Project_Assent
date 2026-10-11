@@ -4,6 +4,11 @@ extends SceneTree
 ## Exits with code 1 if anything fails. CI runs this on every push.
 
 const SCRIPTS := [
+	# Screens first: a script that fails to compile reports its own error lines only
+	# when it is loaded directly, not when main.gd's preload pulls it in.
+	"res://scripts/ui/creator_screen.gd",
+	"res://scripts/ui/leader_editor.gd",
+	"res://scripts/ui/building_editor.gd",
 	"res://scripts/main.gd",
 	"res://scripts/game_state.gd",
 	"res://scripts/data/gear_catalog.gd",
@@ -17,8 +22,6 @@ const SCRIPTS := [
 	"res://scripts/data/village_layout.gd",
 	"res://scripts/data/wildlife_catalog.gd",
 	"res://scripts/render/building_draw.gd",
-	"res://scripts/ui/building_editor.gd",
-	"res://scripts/ui/creator_screen.gd",
 	"res://scripts/world/building.gd",
 	"res://scripts/world/map_controls.gd",
 	"res://scripts/world/village.gd",
@@ -26,7 +29,6 @@ const SCRIPTS := [
 	"res://scripts/render/sprite_library.gd",
 	"res://scripts/render/figure.gd",
 	"res://scripts/ui/ui_style.gd",
-	"res://scripts/ui/leader_editor.gd",
 	"res://scripts/ui/title_screen.gd",
 	"res://scripts/world/creature.gd",
 	"res://scripts/world/projectile.gd",
