@@ -16,8 +16,9 @@ static func fields() -> Array:
 		{"key": "hair", "label": "Hair", "options": [["bald", "Bald"], ["short", "Short"], ["long", "Long"], ["braids", "Braids"]]},
 		{"key": "hair_color", "label": "Hair color", "options": _pairs(hair_colors())},
 		{"key": "headwear", "label": "Headwear", "options": [
-			["none", "None"], ["animal_hood", "Animal-head hood (Shaman)"], ["bone_headband", "Bone headband (Caveman)"]]},
-		{"key": "cloak", "label": "Cloak", "options": [["none", "None"], ["fur_cloak", "Fur cloak (Shaman)"]]},
+			["none", "None"], ["animal_hood", "Wolf-pelt hood (Shaman)"], ["antler_skull", "Antler skull helm (Shaman)"],
+			["bone_headband", "Bone headband (Caveman)"]]},
+		{"key": "cloak", "label": "Cloak", "options": [["none", "None"], ["fur_cloak", "Fur mantle (Shaman)"]]},
 		{"key": "lower", "label": "Lower", "options": [["loincloth", "Loincloth (Caveman)"], ["hide_skirt", "Hide skirt (Shaman)"]]},
 		{"key": "paint", "label": "War paint", "options": [["none", "None"], ["red", "Red ochre"], ["white", "White clay"]]},
 		{"key": "tribe_color", "label": "Tribe color", "options": _pairs(tribe_colors())},
@@ -82,7 +83,7 @@ static func color_of(field: String, id: String) -> Color:
 
 static func default_look() -> Dictionary:
 	return {
-		"sex": "male", "skin": "skin3", "hair": "short", "hair_color": "black",
+		"sex": "male", "skin": "skin3", "hair": "long", "hair_color": "brown",
 		"headwear": "none", "cloak": "none", "lower": "loincloth", "paint": "none",
 		"tribe_color": "ochre",
 	}

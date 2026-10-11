@@ -63,26 +63,49 @@ static func _shadow(ci: CanvasItem, origin: Vector2, px: float, width: float) ->
 
 ## The sprite piece shown on each layer for this look and gear: layer -> [category, piece id, tint].
 ## An empty piece id means the layer is not drawn.
+## Layer order when drawn with real art (the fur mantle is worn over the body).
+const ART_FRONT_ORDER := ["body", "armor", "cloak", "hair", "headwear", "shield", "weapon"]
+const ART_BACK_ORDER := ["shield", "weapon", "body", "armor", "cloak", "hair", "headwear"]
+
+
+## The sprite piece shown on each layer for this look and gear: layer -> [category, piece id].
+## An empty piece id means the layer is not drawn. Body and hair art come pre-colored
+## per skin tone and hair color (e.g. body_male__skin3__black, long__blond).
 static func pieces(look: Dictionary, gear: Dictionary) -> Dictionary:
-	var skin := AppearanceCatalog.color_of("skin", str(look.get("skin", "skin3")))
-	var hair := AppearanceCatalog.color_of("hair_color", str(look.get("hair_color", "black")))
 	var hair_id := str(look.get("hair", "short"))
+	var hair_color := str(look.get("hair_color", "black"))
 	var body_gear := str(gear.get("body", "none_body"))
 	var off := str(gear.get("off_hand", "none_off"))
 	var main := str(gear.get("main_hand", "fists"))
+	var headwear := str(look.get("headwear", "none"))
+	var cloak := str(look.get("cloak", "none"))
 	return {
-		"body": ["bodies", "body_" + str(look.get("sex", "male")), skin],
-		"lower": ["clothing", str(look.get("lower", "loincloth")), Color.WHITE],
-		"armor": ["gear", "" if body_gear == "none_body" else body_gear, Color.WHITE],
-		"hair": ["hair", "" if hair_id == "bald" else hair_id, hair],
-		"headwear": ["clothing", "" if str(look.get("headwear", "none")) == "none" else str(look["headwear"]), Color.WHITE],
-		"cloak": ["clothing", "" if str(look.get("cloak", "none")) == "none" else str(look["cloak"]), Color.WHITE],
-		"shield": ["gear", "" if off == "none_off" else off, Color.WHITE],
-		"weapon": ["gear", "" if main == "fists" else main, Color.WHITE],
+		"body": ["bodies", "body_%s__%s__%s" % [str(look.get("sex", "male")), str(look.get("skin", "skin3")), hair_color]],
+		"lower": ["clothing", str(look.get("lower", "loincloth"))],
+		"armor": ["gear", "" if body_gear == "none_body" else body_gear],
+		"hair": ["hair", "" if hair_id == "bald" else hair_id + "__" + hair_color],
+		"headwear": ["clothing", "" if headwear == "none" else headwear],
+		"cloak": ["clothing", "" if cloak == "none" else cloak],
+		"shield": ["gear", "" if off == "none_off" else off],
+		"weapon": ["gear", "" if main == "fists" else main],
 	}
 
 
-## A person facing `dir` (0-7, see directions.gd).
+## True when this look has body art, so the figure is drawn from sprites.
+static func has_body_art(look: Dictionary) -> bool:
+	var body: Array = pieces(look, {})["body"]
+	return not SpriteLibrary.frames(str(body[0]), str(body[1]), "s").is_empty()
+
+
+## True when a piece will actually be drawn with art (used to flag options in the editor).
+static func piece_has_art(category: String, piece: String) -> bool:
+	return piece == "" or not SpriteLibrary.frames(category, piece, "s").is_empty()
+
+
+## A person facing `dir` (0-7, see directions.gd). With body art, every layer
+## that has art is drawn from sprites and layers without art are left out (mixing
+## code-drawn pieces onto painted bodies would not line up). Without body art the
+## whole figure is the code-drawn placeholder.
 static func draw_human(ci: CanvasItem, origin: Vector2, px: float, look: Dictionary, gear: Dictionary,
 		dir: int = Directions.S, walk_t: float = 0.0, swing_t: float = 0.0) -> void:
 	var c := Ctx.new()
@@ -99,17 +122,28 @@ static func draw_human(ci: CanvasItem, origin: Vector2, px: float, look: Diction
 	_shadow(ci, origin, px, 9.0)
 
 	var layer_pieces := pieces(look, gear)
-	var anim := "walk" if walk_t > 0.0 else ""
-	var order: Array = BACK_ORDER if Directions.is_back_view(c.view) else FRONT_ORDER
-	for layer in order:
+	var back := Directions.is_back_view(c.view)
+	if has_body_art(look):
+		var anim := "walk" if walk_t > 0.0 else ""
+		var o := c.o
+		if swing_t > 0.0:
+			o += Vector2.from_angle(dir * PI / 4.0) * px * (1.5 if swing_t < 0.13 else 0.7)
+		for layer in (ART_BACK_ORDER if back else ART_FRONT_ORDER):
+			var piece: Array = layer_pieces[layer]
+			if str(piece[1]) == "":
+				continue
+			var tex = SpriteLibrary.frame_at(str(piece[0]), str(piece[1]), c.view, anim, walk_t)
+			if tex != null:
+				SpriteLibrary.draw(ci, tex, o, px / REF_PX * SpriteLibrary.SPRITE_SCALE, c.mirrored)
+		return
+	for layer in (BACK_ORDER if back else FRONT_ORDER):
 		var piece: Array = layer_pieces[layer]
 		if str(piece[1]) == "":
 			continue
-		var tex = SpriteLibrary.frame_at(str(piece[0]), str(piece[1]), c.view, anim, walk_t)
-		if tex != null:
-			SpriteLibrary.draw(ci, tex, origin, px / REF_PX * SpriteLibrary.SPRITE_SCALE, c.mirrored, piece[2])
-		else:
-			_placeholder(c, str(layer), str(piece[1]), look)
+		var id := str(piece[1])
+		if layer == "hair":
+			id = id.get_slice("__", 0)
+		_placeholder(c, str(layer), id, look)
 
 
 static func _placeholder(c: Ctx, layer: String, piece: String, look: Dictionary) -> void:
@@ -283,7 +317,7 @@ static func _weapon(c: Ctx, piece: String) -> void:
 		"club":
 			c.r(9, 6, 1, 6, WOOD)
 			c.r(9 + sw, 3, 2, 4, WOOD.darkened(0.25))
-		"spear":
+		"spear", "bone_spear":
 			c.r(9 + sw, -2, 1, 15, WOOD)
 			c.r(9 + sw, -4, 1, 2, STONE)
 		"stone_axe":

@@ -152,8 +152,11 @@ func _test_sprites(sprites, figure) -> void:
 	_check(sprites.frame_at("gear", "no_such_piece", "s", "", 0.0) == null, "missing frame is null")
 	var p: Dictionary = figure.pieces({"sex": "female", "hair": "bald", "headwear": "none", "cloak": "fur_cloak"},
 		{"body": "leather_armor", "main_hand": "flail", "off_hand": "none_off"})
-	_check(p["body"][1] == "body_female", "body piece follows sex")
+	_check(p["body"][1].begins_with("body_female__"), "body piece follows sex")
 	_check(p["hair"][1] == "", "bald draws no hair layer")
+	var q: Dictionary = figure.pieces({"sex": "male", "skin": "skin5", "hair": "braids", "hair_color": "grey"}, {})
+	_check(q["body"][1] == "body_male__skin5__grey", "body art is picked per skin tone and hair color")
+	_check(q["hair"][1] == "braids__grey", "hair art is picked per hair color")
 	_check(p["headwear"][1] == "" and p["cloak"][1] == "fur_cloak", "clothing pieces map to sprite ids")
 	_check(p["armor"][1] == "leather_armor" and p["weapon"][1] == "flail" and p["shield"][1] == "", "gear maps to sprite ids")
 
@@ -173,3 +176,18 @@ func _test_art(sprites, scenery) -> void:
 		_check(views_ok, "%s has all 5 views" % unit[1])
 		_check(not sprites.frames(unit[0], unit[1], "e", "death").is_empty(), "%s has a death sprite" % unit[1])
 	_check(ResourceLoader.exists("res://assets/ui/title.png"), "title screen art exists")
+	var bodies_ok := true
+	for skin in ["skin1", "skin2", "skin3", "skin4", "skin5", "skin6"]:
+		for hair in ["black", "brown", "auburn", "blond", "grey"]:
+			for view in ["s", "se", "e", "ne", "n"]:
+				if sprites.frames("bodies", "body_male__%s__%s" % [skin, hair], view).is_empty():
+					bodies_ok = false
+	_check(bodies_ok, "male body art exists for every skin tone and hair color, in all 5 views")
+	var layers_ok := true
+	for layer in [["gear", "hide_wrap"], ["gear", "leather_armor"], ["gear", "spear"], ["gear", "bone_spear"],
+			["gear", "hide_shield"], ["gear", "bone_shield"], ["clothing", "fur_cloak"], ["clothing", "animal_hood"],
+			["clothing", "antler_skull"], ["hair", "long__blond"], ["hair", "braids__black"]]:
+		for view in ["s", "se", "e", "ne", "n"]:
+			if sprites.frames(layer[0], layer[1], view).is_empty():
+				layers_ok = false
+	_check(layers_ok, "every paper-doll layer has all 5 views")

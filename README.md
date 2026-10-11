@@ -9,7 +9,7 @@ Stone Age to the space age. Built in **Godot 4** (GDScript), 2D pixel art, lands
 
 Both links rebuild automatically about 5 minutes after every push to `main`.
 
-## What's playable now (v0.3.0)
+## What's playable now (v0.4.0)
 
 | Prototype | Opening phase | What you can do |
 | --- | --- | --- |
@@ -21,7 +21,12 @@ Battles use a **3/4 top-down view like the original StarCraft**, and units face 
 
 **First real art (0.3.0):** the title screen, all wilderness scenery (trees, bushes, rocks, plants),
 wolves and hostile spear-carrying cavemen come from ChatGPT concept sheets, with bodies left behind when
-they fall. The player's leader is still a code-drawn placeholder until layered character art exists.
+they fall.
+
+**Leader art (0.4.0):** a male leader is drawn from ChatGPT paper-doll layers: body in 6 skin tones x 5 hair
+colors, long or braided hair, hide or leather armor, fur mantle, wolf-pelt hood, antler skull helm, two
+spears and two shields, all in 5 views. Choices without art yet are marked `*` in the editor. A female
+leader is still the code-drawn placeholder.
 
 Remaining placeholders are pixel art drawn in code. Every clothing and gear piece is its own layer, and
 real sprites replace placeholders **one piece at a time** as they're added: see

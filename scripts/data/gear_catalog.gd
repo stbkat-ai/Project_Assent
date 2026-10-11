@@ -35,6 +35,8 @@ static func items() -> Array:
 			"cost": 2, "damage": 6, "damage_type": "blunt", "interval": 1.0, "range": 24},
 		{"id": "spear", "name": "Stone Spear", "slot": "main_hand", "desc": "Long reach. Pierces unarmored foes.",
 			"cost": 4, "damage": 5, "damage_type": "pierce", "interval": 0.9, "range": 38},
+		{"id": "bone_spear", "name": "Bone-tipped Spear", "slot": "main_hand", "desc": "A longer spear with a barbed bone head.",
+			"cost": 6, "damage": 6, "damage_type": "pierce", "interval": 0.95, "range": 42},
 		{"id": "stone_axe", "name": "Stone Axe", "slot": "main_hand", "desc": "A sharp stone head. Strong slashing hits.",
 			"cost": 5, "damage": 7, "damage_type": "slash", "interval": 1.0, "range": 24},
 		{"id": "flail", "name": "Flail", "slot": "main_hand", "desc": "A stone on a cord. Slow, crushing blunt hits.",

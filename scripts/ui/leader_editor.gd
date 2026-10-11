@@ -10,6 +10,7 @@ const AppearanceCatalog = preload("res://scripts/data/appearance_catalog.gd")
 const GearCatalog = preload("res://scripts/data/gear_catalog.gd")
 const UnitStats = preload("res://scripts/data/unit_stats.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
+const FigureArt = preload("res://scripts/render/figure.gd")
 
 
 ## Big live preview of the leader.
@@ -29,8 +30,8 @@ class Preview extends Control:
 
 	func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.20, 0.27, 0.15))
-		var px := minf(size.x / 16.0, size.y / 26.0)
-		var origin := Vector2(size.x / 2.0, size.y / 2.0 + 10.0 * px)
+		var px := 2.4 * minf(size.x / 72.0, size.y / 58.0)
+		var origin := Vector2(size.x / 2.0, size.y * 0.92)
 		Figure.draw_human(self, origin, px, look, gear, dir, _t if walking else 0.0, 0.0)
 
 
@@ -137,6 +138,7 @@ func _ready() -> void:
 	var gear: Dictionary = state.leader["gear"]
 	for slot_pair in GearCatalog.slots():
 		_add_choice_row(list, str(slot_pair[1]), gear, str(slot_pair[0]), GearCatalog.options_for_slot(str(slot_pair[0])))
+	list.add_child(UiStyle.label("* no art for this yet: it still counts, but isn't drawn on the leader", 16, UiStyle.MUTED))
 	_desc_label = UiStyle.label("", 18, UiStyle.MUTED)
 	_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	list.add_child(_desc_label)
@@ -183,7 +185,8 @@ func _add_choice_row(parent: Control, label_text: String, target: Dictionary, ke
 	parent.add_child(row)
 
 	var refresh := func() -> void:
-		value.text = _option_name(options, str(target.get(key, "")))
+		var id := str(target.get(key, ""))
+		value.text = _option_name(options, id) + ("" if _art_ok(key, id) else "  *")
 	_refreshers.append(refresh)
 	prev.pressed.connect(func() -> void:
 		_cycle(target, key, options, -1)
@@ -194,6 +197,27 @@ func _add_choice_row(parent: Control, label_text: String, target: Dictionary, ke
 		refresh.call()
 		_changed())
 	refresh.call()
+
+
+## False when a choice has no art yet for the current body (shown with a *).
+func _art_ok(key: String, id: String) -> bool:
+	var look: Dictionary = state.leader["look"]
+	if key == "sex":
+		return FigureArt.has_body_art({"sex": id, "skin": look.get("skin", "skin3"), "hair_color": look.get("hair_color", "black")})
+	if not FigureArt.has_body_art(look):
+		return true  # placeholder figure: everything is drawn
+	match key:
+		"hair":
+			return id != "bald" and FigureArt.piece_has_art("hair", id + "__black")
+		"headwear", "cloak":
+			return id == "none" or FigureArt.piece_has_art("clothing", id)
+		"lower":
+			return id == "loincloth"
+		"paint":
+			return id == "none"
+		"body", "main_hand", "off_hand":
+			return id in ["none_body", "fists", "none_off"] or FigureArt.piece_has_art("gear", id)
+	return true
 
 
 func _cycle(target: Dictionary, key: String, options: Array, direction: int) -> void:
@@ -226,6 +250,8 @@ func _randomize_look() -> void:
 
 func _changed() -> void:
 	var gear: Dictionary = state.leader["gear"]
+	for refresh in _refreshers:
+		refresh.call()
 	_preview.look = state.leader["look"]
 	_preview.gear = gear
 	_preview.queue_redraw()

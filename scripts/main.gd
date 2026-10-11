@@ -8,7 +8,7 @@ const Wilderness = preload("res://scripts/world/wilderness.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const TitleScreen = preload("res://scripts/ui/title_screen.gd")
 
-const VERSION := "0.3.0 - first art"
+const VERSION := "0.4.0 - leader art"
 
 var state: GameState
 var _current: Node = null

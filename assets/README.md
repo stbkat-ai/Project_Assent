@@ -75,3 +75,21 @@ python3 tools/place_sprite.py beasts wolf_gray s=/tmp/rows/wolf_gray_00.png se=/
         e=/tmp/rows/wolf_gray_02.png ne=/tmp/rows/wolf_gray_05.png n=/tmp/rows/wolf_gray_04.png --flip ne
 python3 tools/place_sprite.py beasts wolf_gray e=/tmp/rows/wolf_gray_12.png --anim death
 ```
+
+## The leader: paper-doll layers (`tools/paper_doll/`)
+
+The male leader is drawn from `sheet_paper_doll_male.png`: a 13 x 5 grid (rows = base body, then one piece
+per row; columns = s, se, e, ne, n). ChatGPT drew each piece centered in its own cell at its own scale, so
+the cells don't line up by themselves. `tools/paper_doll/` fits every piece to landmarks on the body (head,
+torso, hands per view, in `fit.py`), puts all layers of a view on one shared canvas with the feet at the
+bottom center, and shrinks them 3x to true pixels.
+
+- `bodies/body_male__<skin>__<hair color>/` — the body (it includes the loincloth and its own hair),
+  recolored per skin tone and hair color.
+- `hair/<style>__<hair color>/` — `long`, `braids`; `gear/` — `hide_wrap`, `leather_armor`, `spear`,
+  `bone_spear`, `hide_shield`, `bone_shield`; `clothing/` — `fur_cloak` (mantle), `animal_hood` (wolf pelt),
+  `antler_skull`.
+
+Regenerate everything with `python3 tools/paper_doll/gen.py`. When a body has art, layers without art are
+left out (code-drawn pieces don't line up with painted bodies); the leader editor marks them with `*`.
+A **female** body sheet in the same format is still needed.
