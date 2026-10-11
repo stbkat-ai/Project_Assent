@@ -20,7 +20,10 @@ static func compute(gear: Dictionary, is_hero: bool = false) -> Dictionary:
 		"hp": BASE_HP, "damage": 2, "damage_type": "blunt", "interval": 0.8, "range": 22.0,
 		"armor": 0, "block": 0.0, "speed": BASE_SPEED, "cost": BASE_COST,
 	}
+	var two_handed := GearCatalog.is_two_handed(str(gear.get("main_hand", "")))
 	for slot_pair in GearCatalog.slots():
+		if two_handed and slot_pair[0] == "off_hand":
+			continue  # both hands are on the weapon
 		var item: Dictionary = GearCatalog.get_item(str(gear.get(slot_pair[0], "")))
 		if item.is_empty():
 			continue

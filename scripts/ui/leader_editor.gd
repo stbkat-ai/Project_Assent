@@ -147,7 +147,8 @@ func _ready() -> void:
 	list.add_child(UiStyle.label("Gear (sets the stats)", 20, UiStyle.GOLD))
 	var gear: Dictionary = state.leader["gear"]
 	for slot_pair in GearCatalog.slots():
-		_add_choice_row(list, str(slot_pair[1]), gear, str(slot_pair[0]), GearCatalog.options_for_slot(str(slot_pair[0])))
+		_add_choice_row(list, str(slot_pair[1]), gear, str(slot_pair[0]),
+			GearCatalog.unlocked_options_for_slot(str(slot_pair[0]), state.unlocked))
 	list.add_child(UiStyle.label("* no art for this yet: it still counts, but isn't drawn on the leader", 16, UiStyle.MUTED))
 	_desc_label = UiStyle.label("", 18, UiStyle.MUTED)
 	_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -196,6 +197,9 @@ func _add_choice_row(parent: Control, label_text: String, target: Dictionary, ke
 
 	var refresh := func() -> void:
 		var id := str(target.get(key, ""))
+		if key == "off_hand" and GearCatalog.is_two_handed(str(target.get("main_hand", ""))):
+			value.text = "Hands full (two-handed weapon)"
+			return
 		value.text = _option_name(options, id) + ("" if _art_ok(key, id) else "  *")
 	_refreshers.append(refresh)
 	prev.pressed.connect(func() -> void:
@@ -231,6 +235,8 @@ func _art_ok(key: String, id: String) -> bool:
 
 
 func _cycle(target: Dictionary, key: String, options: Array, direction: int) -> void:
+	if key == "off_hand" and GearCatalog.is_two_handed(str(target.get("main_hand", ""))):
+		return  # both hands are on the weapon
 	var index := 0
 	var current := str(target.get(key, ""))
 	for i in options.size():
@@ -239,6 +245,8 @@ func _cycle(target: Dictionary, key: String, options: Array, direction: int) -> 
 			break
 	index = posmod(index + direction, options.size())
 	target[key] = str(options[index][0])
+	if key == "main_hand" and GearCatalog.is_two_handed(str(target[key])):
+		target["off_hand"] = "none_off"
 
 
 func _option_name(options: Array, id: String) -> String:

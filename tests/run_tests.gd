@@ -101,6 +101,11 @@ func _test_compute(stats) -> void:
 	_check(slinger["squad_size"] == 8, "cheap slingers come 8 to a squad")
 	var hero = stats.compute({"body": "none_body", "main_hand": "club", "off_hand": "none_off"}, true)
 	_check(hero["hp"] == 200 and hero["damage"] == 12, "hero gets 5x HP and 2x damage")
+	var brute = stats.compute({"body": "none_body", "main_hand": "great_club", "off_hand": "bone_shield"})
+	_check(brute["armor"] == 0 and brute["block"] == 0.0, "a two-handed weapon leaves no hand for the shield")
+	_check(brute["damage"] == 13 and brute["damage_type"] == "blunt", "great club hits hard")
+	var archer = stats.compute({"main_hand": "bow"})
+	_check(archer["ranged"] == true and archer["range"] > 200.0, "bows shoot farther than slings")
 	var unknown = stats.compute({"body": "made_up_item"})
 	_check(unknown["hp"] == 40 and unknown["damage"] == 2, "unknown gear ids are ignored safely")
 
@@ -114,6 +119,22 @@ func _test_catalogs(gear, looks) -> void:
 			dupes = true
 		ids[item["id"]] = true
 	_check(not dupes, "gear ids are unique")
+	var weapons_ok := true
+	for item in gear.for_slot("main_hand"):
+		if not item.has("kind") or not item.has("damage") or not ["thrust", "swing", "shoot", "punch"].has(item["kind"]):
+			weapons_ok = false
+	_check(weapons_ok, "every weapon has damage and an attack kind")
+	_check(gear.for_slot("main_hand").size() >= 17, "the full Stone Age weapon list is available")
+	_check(gear.is_two_handed("bow") and not gear.is_two_handed("spear"), "bows are two-handed, spears are not")
+	var start_weapons: Array = gear.unlocked_options_for_slot("main_hand", gear.starting_unlocks())
+	var start_ids: Array = []
+	for option in start_weapons:
+		start_ids.append(option[0])
+	start_ids.sort()
+	_check(start_ids == ["club", "spear", "stone_axe"], "a new game starts with only the spear, club and axe")
+	_check(gear.unlocked_options_for_slot("off_hand", gear.starting_unlocks()).size() == gear.for_slot("off_hand").size(),
+		"all shields are available from the start")
+	_check(gear.starting_unlocks().has(gear.default_gear()["main_hand"]), "the default weapon is a starting weapon")
 	for slot_pair in gear.slots():
 		_check(gear.for_slot(slot_pair[0]).size() >= 2, "slot %s has choices" % slot_pair[0])
 	var default_gear: Dictionary = gear.default_gear()

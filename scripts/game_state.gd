@@ -10,6 +10,8 @@ const SAVE_VERSION := 1
 
 ## {"name": String, "look": Dictionary, "gear": Dictionary}
 var leader: Dictionary = {}
+## Gear ids the player can equip (weapons beyond the starting three unlock later).
+var unlocked: Array = GearCatalog.starting_unlocks()
 
 
 func has_leader() -> bool:
@@ -17,6 +19,7 @@ func has_leader() -> bool:
 
 
 func new_leader() -> void:
+	unlocked = GearCatalog.starting_unlocks()
 	leader = {
 		"name": "Ugo",
 		"look": AppearanceCatalog.default_look(),
@@ -29,15 +32,27 @@ func save_game() -> void:
 	if file == null:
 		push_warning("Could not write save file: %s" % SAVE_PATH)
 		return
-	file.store_string(JSON.stringify({"version": SAVE_VERSION, "leader": leader}))
+	file.store_string(JSON.stringify({"version": SAVE_VERSION, "leader": leader, "unlocked": unlocked}))
 
 
 func load_game() -> void:
 	if not FileAccess.file_exists(SAVE_PATH):
 		return
 	var data = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
-	if data is Dictionary and data.get("leader") is Dictionary:
+	if not (data is Dictionary):
+		return
+	if data.get("unlocked") is Array:
+		unlocked = []
+		for id in data["unlocked"]:
+			unlocked.append(str(id))
+		for id in GearCatalog.starting_unlocks():
+			if not unlocked.has(id):
+				unlocked.append(id)
+	if data.get("leader") is Dictionary:
 		leader = _upgrade_leader(data["leader"])
+		var gear: Dictionary = leader["gear"]
+		if not unlocked.has(str(gear.get("main_hand", ""))):
+			gear["main_hand"] = "club"  # saved before weapons were locked
 
 
 ## Fill in any fields a save from an older build is missing.

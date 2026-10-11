@@ -9,7 +9,7 @@ Stone Age to the space age. Built in **Godot 4** (GDScript), 2D pixel art, lands
 
 Both links rebuild automatically about 5 minutes after every push to `main`.
 
-## What's playable now (v0.4.0)
+## What's playable now (v0.5.0)
 
 | Prototype | Opening phase | What you can do |
 | --- | --- | --- |
@@ -22,6 +22,11 @@ Battles use a **3/4 top-down view like the original StarCraft**, and units face 
 **First real art (0.3.0):** the title screen, all wilderness scenery (trees, bushes, rocks, plants),
 wolves and hostile spear-carrying cavemen come from ChatGPT concept sheets, with bodies left behind when
 they fall.
+
+**Weapons (0.5.0):** a new game starts with the **spear, club and axe**. The full Stone Age list (knives,
+bone and stone clubs, mace, flail, flint axe, bone-tipped spear, sling, and two-handed great club, war spear,
+halberd and bows) is in the game data, locked until unlocks arrive. Two-handed weapons leave no hand for a
+shield. Attacks animate by weapon type: spears thrust, clubs and axes swing, bows and slings shoot.
 
 **Leader art (0.4.0):** a male leader is drawn from ChatGPT paper-doll layers: body in 6 skin tones x 5 hair
 colors, long or braided hair, hide or leather armor, fur mantle, wolf-pelt hood, antler skull helm, two

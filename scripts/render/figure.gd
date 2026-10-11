@@ -14,6 +14,7 @@ const AppearanceCatalog = preload("res://scripts/data/appearance_catalog.gd")
 const Directions = preload("res://scripts/render/directions.gd")
 const SpriteLibrary = preload("res://scripts/render/sprite_library.gd")
 const RigMale = preload("res://scripts/data/rig_male.gd")
+const GearCatalog = preload("res://scripts/data/gear_catalog.gd")
 
 ## The direction a figure faces, in each drawn view's own art space (used to
 ## lean and thrust forward when attacking).
@@ -92,7 +93,7 @@ static func pieces(look: Dictionary, gear: Dictionary) -> Dictionary:
 		"hair": ["hair", "" if hair_id == "bald" else hair_id + "__" + hair_color],
 		"headwear": ["clothing", "" if headwear == "none" else headwear],
 		"cloak": ["clothing", "" if cloak == "none" else cloak],
-		"shield": ["gear", "" if off == "none_off" else off],
+		"shield": ["gear", "" if off == "none_off" or GearCatalog.is_two_handed(main) else off],
 		"weapon": ["gear", "" if main == "fists" else main],
 	}
 
@@ -130,7 +131,8 @@ static func draw_human(ci: CanvasItem, origin: Vector2, px: float, look: Diction
 	var layer_pieces := pieces(look, gear)
 	var back := Directions.is_back_view(c.view)
 	if has_body_art(look):
-		_draw_art_layers(ci, origin, px, c.view, c.mirrored, back, layer_pieces, walk_t, swing_t)
+		_draw_art_layers(ci, origin, px, c.view, c.mirrored, back, layer_pieces, walk_t, swing_t,
+			GearCatalog.attack_kind(str(gear.get("main_hand", "fists"))))
 		return
 	for layer in (BACK_ORDER if back else FRONT_ORDER):
 		var piece: Array = layer_pieces[layer]
@@ -146,7 +148,7 @@ static func draw_human(ci: CanvasItem, origin: Vector2, px: float, look: Diction
 ## walking lifts the legs in turn and bobs the upper body; attacking leans the
 ## body forward and thrusts the weapon out from the hand.
 static func _draw_art_layers(ci: CanvasItem, origin: Vector2, px: float, view: String, mirrored: bool, back: bool,
-		layer_pieces: Dictionary, walk_t: float, swing_t: float) -> void:
+		layer_pieces: Dictionary, walk_t: float, swing_t: float, attack: String = "thrust") -> void:
 	var s := px / REF_PX * SpriteLibrary.SPRITE_SCALE
 	var rig: Dictionary = RigMale.VIEWS.get(view, {})
 	var hip := -float(rig.get("hip", -13.0))
@@ -154,11 +156,26 @@ static func _draw_art_layers(ci: CanvasItem, origin: Vector2, px: float, view: S
 	var walking := walk_t > 0.0
 	var phase := walk_t * WALK_SPEED if walking else 0.0
 	var up := Vector2(0, -SpriteLibrary.walk_bob(phase)) if walking else Vector2.ZERO
-	var strike := 0.0
-	if swing_t > 0.0:
-		strike = sin(PI * clampf(1.0 - swing_t / 0.25, 0.0, 1.0))
+	var t := clampf(1.0 - swing_t / 0.25, 0.0, 1.0) if swing_t > 0.0 else 0.0
+	var strike := sin(PI * t) if swing_t > 0.0 else 0.0
 	var fwd: Vector2 = FORWARD.get(view, Vector2(1, 0))
 	var lean := fwd * 1.2 * strike
+	# How the weapon moves for this kind of attack.
+	var w_angle := 0.0
+	var w_shift := Vector2.ZERO
+	match attack:
+		"thrust":
+			w_angle = -0.35 * strike
+			w_shift = fwd * 5.0 * strike
+		"swing":
+			# Raise it back, then bring it down and forward.
+			w_angle = -1.0 * (t / 0.35) if t < 0.35 else -1.0 + 1.8 * ((t - 0.35) / 0.65)
+			if swing_t <= 0.0:
+				w_angle = 0.0
+			w_shift = fwd * 2.0 * strike
+		"shoot":
+			lean = Vector2.ZERO
+			w_shift = -fwd * 2.0 * strike
 	for layer in (ART_BACK_ORDER if back else ART_FRONT_ORDER):
 		var piece: Array = layer_pieces[layer]
 		if str(piece[1]) == "":
@@ -170,7 +187,7 @@ static func _draw_art_layers(ci: CanvasItem, origin: Vector2, px: float, view: S
 			"body":
 				SpriteLibrary.draw_walking(ci, tex, origin, s, mirrored, hip, phase, up + lean)
 			"weapon":
-				SpriteLibrary.draw_rotated(ci, tex, origin, s, mirrored, hand, -0.35 * strike, up + lean + fwd * 5.0 * strike)
+				SpriteLibrary.draw_rotated(ci, tex, origin, s, mirrored, hand, w_angle, up + lean + w_shift)
 			_:
 				SpriteLibrary.draw_region(ci, tex, origin, s, mirrored, Rect2(Vector2.ZERO, tex.get_size()), up + lean)
 
@@ -342,16 +359,29 @@ static func _weapon(c: Ctx, piece: String) -> void:
 	var sw := 0.0
 	if c.swing_t > 0.0:
 		sw = 2.0 if c.swing_t < 0.13 else 1.0
-	match piece:
+	match str(GearCatalog.get_item(piece).get("shape", "")):
+		"knife":
+			c.r(9, 9, 1, 3, WOOD)
+			c.r(9 + sw, 6, 1, 3, BONE if piece == "bone_knife" else STONE)
 		"club":
 			c.r(9, 6, 1, 6, WOOD)
-			c.r(9 + sw, 3, 2, 4, WOOD.darkened(0.25))
-		"spear", "bone_spear":
-			c.r(9 + sw, -2, 1, 15, WOOD)
-			c.r(9 + sw, -4, 1, 2, STONE)
-		"stone_axe":
+			c.r(9 + sw, 3, 2, 4, BONE if piece == "bone_club" else STONE if piece == "stone_club" else WOOD.darkened(0.25))
+		"mace":
+			c.r(9, 6, 1, 6, WOOD)
+			c.r(8 + sw, 2, 3, 4, STONE)
+		"great_club":
+			c.r(9, 3, 1, 10, WOOD)
+			c.r(8 + sw, -1, 3, 5, WOOD.darkened(0.3))
+		"spear":
+			var extra := 4.0 if piece == "war_spear" else 0.0
+			c.r(9 + sw, -2 - extra, 1, 15 + extra, WOOD)
+			c.r(9 + sw, -4 - extra, 1, 2, BONE if piece == "bone_spear" else STONE)
+		"halberd":
+			c.r(9 + sw, -3, 1, 16, WOOD)
+			c.r(10 + sw, -3, 2, 4, STONE)
+		"axe":
 			c.r(9, 4, 1, 8, WOOD)
-			c.r(10 + sw, 4, 2, 3, STONE)
+			c.r(10 + sw, 4, 2, 3, STONE.darkened(0.2) if piece == "flint_axe" else STONE)
 		"flail":
 			c.r(9, 8, 1, 4, WOOD)
 			c.r(9 + sw * 0.5, 6, 1, 2, LEATHER)
@@ -359,6 +389,11 @@ static func _weapon(c: Ctx, piece: String) -> void:
 		"sling":
 			c.r(9, 9, 1, 3, LEATHER)
 			c.r(10 + sw, 11, 1, 1, STONE)
+		"bow":
+			c.r(10, 3, 1, 10, WOOD if piece == "bow" else WOOD.darkened(0.3))
+			c.r(9, 2, 1, 1, WOOD)
+			c.r(9, 13, 1, 1, WOOD)
+			c.r(9, 3, 1, 10, BONE.darkened(0.2))
 
 
 ## A wolf facing `dir`.
