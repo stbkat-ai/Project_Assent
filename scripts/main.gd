@@ -6,8 +6,9 @@ const GameState = preload("res://scripts/game_state.gd")
 const LeaderEditor = preload("res://scripts/ui/leader_editor.gd")
 const Wilderness = preload("res://scripts/world/wilderness.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
+const TitleScreen = preload("res://scripts/ui/title_screen.gd")
 
-const VERSION := "0.2.0 - 3/4 view, 8 directions"
+const VERSION := "0.3.0 - first art"
 
 var state: GameState
 var _current: Node = null
@@ -30,41 +31,76 @@ func show_menu() -> void:
 	var root := Control.new()
 	root.theme = UiStyle.make_theme()
 	UiStyle.full_rect(root)
-	var bg := ColorRect.new()
-	bg.color = UiStyle.BG
-	root.add_child(UiStyle.full_rect(bg))
+	var title := TitleScreen.new()
+	root.add_child(title)
+	var version := UiStyle.label(VERSION, 14, Color(1, 1, 1, 0.6))
+	version.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	version.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	version.offset_left = 10
+	version.offset_bottom = -6
+	root.add_child(version)
+	title.chosen.connect(func(action: String) -> void: _on_title_choice(root, action))
+	_swap(root)
 
+
+func _on_title_choice(root: Control, action: String) -> void:
+	match action:
+		"new":
+			var start_new := func() -> void:
+				state.new_leader()
+				show_leader_editor()
+			if state.has_leader():
+				_panel(root, "Start a new game?", "This replaces %s, your current leader." % state.leader["name"],
+					[["Start new", start_new], ["Cancel", null]])
+			else:
+				state.new_leader()
+				show_leader_editor()
+		"load":
+			if state.has_leader():
+				_panel(root, "Continue as %s" % state.leader["name"], "Your leader is waiting at the edge of the wilderness.",
+					[["Into the wilderness", show_wilderness], ["Edit leader", show_leader_editor], ["Back", null]])
+			else:
+				_panel(root, "No saved game yet", "Tap New Game to create your leader.", [["OK", null]])
+		"settings":
+			_panel(root, "Settings", "Settings are coming in a later build.", [["OK", null]])
+		"credits":
+			_panel(root, "Credits", "Project Ascent, created by Luke.\nArt made with ChatGPT. Code by Claude.\nBuilt with the Godot Engine.", [["OK", null]])
+		"exit":
+			if OS.has_feature("web"):
+				_panel(root, "Exit", "Close the browser tab to leave the game.", [["OK", null]])
+			else:
+				get_tree().quit()
+
+
+## A small dialog over the menu. Each button is [label, Callable or null]; null just closes it.
+func _panel(root: Control, heading: String, body: String, buttons: Array) -> void:
+	var shade := ColorRect.new()
+	shade.color = Color(0, 0, 0, 0.55)
+	root.add_child(UiStyle.full_rect(shade))
 	var center := CenterContainer.new()
-	root.add_child(UiStyle.full_rect(center))
+	shade.add_child(UiStyle.full_rect(center))
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(460, 0)
+	center.add_child(panel)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 14)
-	center.add_child(box)
-
-	var title := UiStyle.label("PROJECT ASCENT", 52, UiStyle.GOLD)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(title)
-	var subtitle := UiStyle.label("From the Stone Age to the stars", 22, UiStyle.MUTED)
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(subtitle)
-	box.add_child(Control.new())
-
-	if state.has_leader():
-		var cont := UiStyle.button("Continue as %s" % state.leader["name"], 360)
-		cont.pressed.connect(show_wilderness)
-		box.add_child(cont)
-		var edit := UiStyle.button("Edit your leader", 360)
-		edit.pressed.connect(show_leader_editor)
-		box.add_child(edit)
-	var fresh := UiStyle.button("New leader", 360)
-	fresh.pressed.connect(func() -> void:
-		state.new_leader()
-		show_leader_editor())
-	box.add_child(fresh)
-
-	var version := UiStyle.label(VERSION, 16, UiStyle.MUTED)
-	version.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(version)
-	_swap(root)
+	panel.add_child(box)
+	box.add_child(UiStyle.label(heading, 28, UiStyle.GOLD))
+	var text := UiStyle.label(body, 20)
+	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	text.custom_minimum_size = Vector2(420, 0)
+	box.add_child(text)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	box.add_child(row)
+	for entry in buttons:
+		var b := UiStyle.button(str(entry[0]), 120)
+		var action = entry[1]
+		b.pressed.connect(func() -> void:
+			shade.queue_free()
+			if action != null:
+				action.call())
+		row.add_child(b)
 
 
 func show_leader_editor() -> void:

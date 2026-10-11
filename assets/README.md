@@ -31,8 +31,12 @@ Animations so far: `walk`. Attacks and hits are code-driven motion for now.
 | `hair` | `short`, `long`, `braids` | Drawn in **light grey**; the game tints it to the hair color. |
 | `clothing` | `loincloth`, `hide_skirt`, `animal_hood`, `bone_headband`, `fur_cloak` | |
 | `gear` | `hide_wrap`, `leather_armor`, `bone_hide`, `club`, `spear`, `stone_axe`, `flail`, `sling`, `hide_shield`, `bone_shield` | Weapons in the right hand, shields on the left arm, as worn. |
-| `beasts` | `wolf` | One whole animal per sprite. |
-| `scenery` | `tree`, `rock` | Only the `s` view is used. |
+| `beasts` | `wolf_gray`, `wolf_brown` | One whole animal per view. `e_death_0.png` = the body left behind. |
+| `units` | `caveman_spear` | Whole-character sprites for units that aren't customized (enemies, NPCs). |
+| `scenery` | see `scripts/data/scenery_catalog.gd` (oaks, pines, birches, bushes, rocks, grass, ferns, flowers, mushrooms, stumps, log) | Only the `s` view is used; maps mirror them at random. |
+
+The title screen art is `assets/ui/title.png` (its painted buttons are tap zones, see
+`scripts/ui/title_screen.gd`). Original ChatGPT sheets are kept in `assets/source/` (not shipped in the game).
 
 Piece ids match `scripts/data/gear_catalog.gd` and `scripts/data/appearance_catalog.gd`.
 
@@ -49,9 +53,25 @@ Piece ids match `scripts/data/gear_catalog.gd` and `scripts/data/appearance_cata
 
 ## Turning a ChatGPT concept sheet into game sprites
 
+ChatGPT's direction labels are often wrong (its "N" usually faces the viewer). Always map views by what
+they show: `s` faces the viewer, `se` down-right, `e` right, `ne` up-right, `n` away. If no view faces
+up-right, use the up-left one with `--flip ne`.
+
+Scattered sheets (items in a grid):
+
 ```
-python3 tools/slice_sheet.py sheet.png /tmp/out          # cut, key out magenta, shrink to true pixels
+python3 tools/slice_sheet.py sheet.png /tmp/out --scale 2   # cut, drop captions, key out magenta, halve
 #   check /tmp/out/_index.png to see which piece number is which
 python3 tools/place_sprite.py beasts wolf s=/tmp/out/piece_00.png se=/tmp/out/piece_01.png \
         e=/tmp/out/piece_02.png ne=/tmp/out/piece_03.png n=/tmp/out/piece_04.png
+```
+
+Row sheets (one character or animal per row: 8 directions, then idle / walk / attack / hurt / death):
+
+```
+python3 tools/slice_rows.py assets/source/sheet_animals.png /tmp/rows --band wolf_gray:5:148 --x-min 105
+#   check /tmp/rows/_rows.png, then map views by what they show
+python3 tools/place_sprite.py beasts wolf_gray s=/tmp/rows/wolf_gray_00.png se=/tmp/rows/wolf_gray_01.png \
+        e=/tmp/rows/wolf_gray_02.png ne=/tmp/rows/wolf_gray_05.png n=/tmp/rows/wolf_gray_04.png --flip ne
+python3 tools/place_sprite.py beasts wolf_gray e=/tmp/rows/wolf_gray_12.png --anim death
 ```

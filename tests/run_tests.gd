@@ -9,14 +9,17 @@ const SCRIPTS := [
 	"res://scripts/data/gear_catalog.gd",
 	"res://scripts/data/appearance_catalog.gd",
 	"res://scripts/data/unit_stats.gd",
+	"res://scripts/data/scenery_catalog.gd",
 	"res://scripts/render/directions.gd",
 	"res://scripts/render/sprite_library.gd",
 	"res://scripts/render/figure.gd",
 	"res://scripts/ui/ui_style.gd",
 	"res://scripts/ui/leader_editor.gd",
+	"res://scripts/ui/title_screen.gd",
 	"res://scripts/world/creature.gd",
 	"res://scripts/world/projectile.gd",
 	"res://scripts/world/scenery.gd",
+	"res://scripts/world/corpse.gd",
 	"res://scripts/world/wilderness.gd",
 ]
 
@@ -40,6 +43,9 @@ func _init() -> void:
 	if dirs != null and sprites != null and figure != null:
 		_test_directions(dirs)
 		_test_sprites(sprites, figure)
+	var scenery = load("res://scripts/data/scenery_catalog.gd")
+	if sprites != null and scenery != null:
+		_test_art(sprites, scenery)
 	print("\n%d passed, %d failed" % [_passes, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -150,3 +156,20 @@ func _test_sprites(sprites, figure) -> void:
 	_check(p["hair"][1] == "", "bald draws no hair layer")
 	_check(p["headwear"][1] == "" and p["cloak"][1] == "fur_cloak", "clothing pieces map to sprite ids")
 	_check(p["armor"][1] == "leather_armor" and p["weapon"][1] == "flail" and p["shield"][1] == "", "gear maps to sprite ids")
+
+
+func _test_art(sprites, scenery) -> void:
+	print("Art in the game:")
+	var missing := PackedStringArray()
+	for id in scenery.all_ids():
+		if sprites.frames("scenery", id, "s").is_empty():
+			missing.append(id)
+	_check(missing.is_empty(), "every scenery piece has a sprite (missing: %s)" % ", ".join(missing))
+	for unit in [["beasts", "wolf_gray"], ["beasts", "wolf_brown"], ["units", "caveman_spear"]]:
+		var views_ok := true
+		for view in ["s", "se", "e", "ne", "n"]:
+			if sprites.frames(unit[0], unit[1], view).is_empty():
+				views_ok = false
+		_check(views_ok, "%s has all 5 views" % unit[1])
+		_check(not sprites.frames(unit[0], unit[1], "e", "death").is_empty(), "%s has a death sprite" % unit[1])
+	_check(ResourceLoader.exists("res://assets/ui/title.png"), "title screen art exists")

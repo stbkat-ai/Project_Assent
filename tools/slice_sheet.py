@@ -117,6 +117,42 @@ def detect_scale(arr):
     return best
 
 
+def white_mask(arr):
+    rgb = arr[..., :3].astype(np.int32)
+    return (arr[..., 3] > 0) & (rgb.min(axis=-1) > 205) & (rgb.max(axis=-1) - rgb.min(axis=-1) < 45)
+
+
+def is_text(arr):
+    """True for a piece that is just a caption (mostly white letters)."""
+    opaque = (arr[..., 3] > 0).sum()
+    return opaque > 0 and white_mask(arr).sum() / opaque > 0.3
+
+
+def strip_bottom_label(arr):
+    """Cut a caption printed just under an item off the bottom of its crop."""
+    h = arr.shape[0]
+    counts = white_mask(arr).sum(axis=1)
+    label_rows = counts >= 6
+    y = h - 1
+    while y >= max(0, h - 90) and not label_rows[y]:
+        y -= 1
+    if y < max(0, h - 90) or not label_rows[y]:
+        return arr
+    top, gap = y, 0
+    while y > 0 and gap <= 12:
+        y -= 1
+        if label_rows[y]:
+            top, gap = y, 0
+        else:
+            gap += 1
+    cut = max(1, top - 3)
+    out = arr[:cut].copy()
+    ys, xs = np.nonzero(out[..., 3] > 0)
+    if not len(xs):
+        return arr
+    return out[: ys.max() + 1, xs.min(): xs.max() + 1]
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("sheet")
@@ -126,6 +162,7 @@ def main():
     ap.add_argument("--scale", default="auto", help="screen pixels per art pixel, or 'auto'")
     ap.add_argument("--merge", type=int, default=6, help="join parts closer than this many sheet pixels")
     ap.add_argument("--min-size", type=int, default=12, help="ignore specks smaller than this many sheet pixels")
+    ap.add_argument("--keep-labels", action="store_true", help="keep text captions instead of removing them")
     args = ap.parse_args()
 
     img = Image.open(args.sheet).convert("RGBA")
@@ -144,9 +181,19 @@ def main():
              if b[2] - b[0] >= args.min_size or b[3] - b[1] >= args.min_size]
     os.makedirs(args.out_dir, exist_ok=True)
     thumbs = []
-    for i, (x0, y0, x1, y1) in enumerate(boxes):
+    i = -1
+    for x0, y0, x1, y1 in boxes:
         piece = keyed.crop((x0, y0, x1, y1))
+        if not args.keep_labels:
+            arr_piece = np.asarray(piece)
+            if is_text(arr_piece):
+                continue
+            arr_piece = strip_bottom_label(arr_piece)
+            if is_text(arr_piece) or min(arr_piece.shape[:2]) < 4:
+                continue
+            piece = Image.fromarray(arr_piece)
         scale = detect_scale(np.asarray(piece)) if args.scale == "auto" else int(args.scale)
+        i += 1
         if scale > 1:
             piece = piece.resize((max(1, piece.width // scale), max(1, piece.height // scale)), Image.NEAREST)
         path = os.path.join(args.out_dir, "piece_%02d.png" % i)

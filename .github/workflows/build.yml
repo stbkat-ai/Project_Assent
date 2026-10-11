@@ -26,6 +26,8 @@ jobs:
       image: barichello/godot-ci:4.3
     steps:
       - uses: actions/checkout@v4
+      - name: Import project (so art files can be loaded)
+        run: timeout 300 godot --headless --editor --quit || true
       - name: Run tests
         shell: bash
         run: |

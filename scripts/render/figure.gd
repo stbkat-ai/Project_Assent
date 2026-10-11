@@ -16,6 +16,9 @@ const SpriteLibrary = preload("res://scripts/render/sprite_library.gd")
 
 const GRID_W := 12.0
 const GRID_H := 18.0
+## Placeholder pixel size that matches sprite art at 1:1. Sprites are drawn at
+## px / REF_PX, so art and placeholders stay the same size at any zoom.
+const REF_PX := 2.4
 
 const WOOD := Color(0.48, 0.33, 0.19)
 const STONE := Color(0.62, 0.60, 0.56)
@@ -104,7 +107,7 @@ static func draw_human(ci: CanvasItem, origin: Vector2, px: float, look: Diction
 			continue
 		var tex = SpriteLibrary.frame_at(str(piece[0]), str(piece[1]), c.view, anim, walk_t)
 		if tex != null:
-			SpriteLibrary.draw(ci, tex, origin, px * 0.5 * SpriteLibrary.SPRITE_SCALE, c.mirrored, piece[2])
+			SpriteLibrary.draw(ci, tex, origin, px / REF_PX * SpriteLibrary.SPRITE_SCALE, c.mirrored, piece[2])
 		else:
 			_placeholder(c, str(layer), str(piece[1]), look)
 
@@ -302,7 +305,7 @@ static func draw_wolf(ci: CanvasItem, origin: Vector2, px: float, dir: int = Dir
 	_shadow(ci, origin, px, 11.0)
 	var tex = SpriteLibrary.frame_at("beasts", "wolf", view, "walk" if walk_t > 0.0 else "", walk_t)
 	if tex != null:
-		SpriteLibrary.draw(ci, tex, origin, px * 0.5 * SpriteLibrary.SPRITE_SCALE, mirrored)
+		SpriteLibrary.draw(ci, tex, origin, px / REF_PX * SpriteLibrary.SPRITE_SCALE, mirrored)
 		return
 	var c := Ctx.new()
 	c.ci = ci
@@ -346,3 +349,27 @@ static func draw_wolf(ci: CanvasItem, origin: Vector2, px: float, dir: int = Dir
 			if view != "ne":
 				c.r(10 + lunge, head_y + 1.0, 1, 1, Color(0.95, 0.80, 0.35))
 				c.r(12 + lunge, head_y + 2.0, 1, 1, EYE)
+
+
+## A unit drawn from one whole sprite per view (e.g. a hostile caveman or a
+## wolf), with a small bob while walking and a lunge while attacking.
+## Returns false if there is no art for it, so the caller can draw a placeholder.
+static func draw_whole(ci: CanvasItem, origin: Vector2, px: float, category: String, piece: String,
+		dir: int, walk_t: float = 0.0, swing_t: float = 0.0) -> bool:
+	var view := Directions.view_of(dir)
+	var tex = SpriteLibrary.frame_at(category, piece, view, "walk" if walk_t > 0.0 else "", walk_t)
+	if tex == null:
+		return false
+	var o := origin
+	if walk_t > 0.0 and int(walk_t * 8.0) % 2 == 1:
+		o.y -= px * 0.6
+	if swing_t > 0.0:
+		o += Vector2.from_angle(dir * PI / 4.0) * px * (2.5 if swing_t < 0.13 else 1.2)
+	_shadow(ci, origin, px, 10.0)
+	SpriteLibrary.draw(ci, tex, o, px / REF_PX * SpriteLibrary.SPRITE_SCALE, Directions.is_mirrored(dir))
+	return true
+
+
+## The death sprite for a whole-sprite unit, or null.
+static func death_frame(category: String, piece: String):
+	return SpriteLibrary.frame_at(category, piece, "e", "death", 0.0)

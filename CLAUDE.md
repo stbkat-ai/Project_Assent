@@ -17,7 +17,8 @@ https://claude.ai/code/artifact/c152695d-a333-43db-9af9-d9aa2f2796e3 — record 
   (`scripts/render/directions.gd`). Art lives in `assets/sprites/<category>/<piece>/<view>[_<anim>_<n>].png`
   and overrides the placeholder automatically (`sprite_library.gd`). Art comes from Luke as ChatGPT concept
   sheets: slice with `tools/slice_sheet.py`, check `_index.png`, show Luke the cut pieces, then
-  `tools/place_sprite.py`. Rules in `assets/README.md`.
+  `tools/place_sprite.py` (row-style sheets: `tools/slice_rows.py`). ChatGPT mislabels directions: map
+  views by what they show. Source sheets are archived in `assets/source/`. Rules in `assets/README.md`.
 - Tabs for indentation.
 
 ## Testing / CI

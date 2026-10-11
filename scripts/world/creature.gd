@@ -13,8 +13,9 @@ const Directions = preload("res://scripts/render/directions.gd")
 const UnitStats = preload("res://scripts/data/unit_stats.gd")
 const Projectile = preload("res://scripts/world/projectile.gd")
 
-const PX := 2.0  # screen size of one figure pixel at zoom 1
-const BODY_CENTER := Vector2(0, -18)
+const PX := 2.4  # screen size of one placeholder pixel at zoom 1 (matches sprite art)
+const BODY_CENTER := Vector2(0, -20)
+const Corpse = preload("res://scripts/world/corpse.gd")
 const HIT_RADIUS := 26.0
 const HERO_REST_DELAY := 4.0  # seconds without being hit before healing starts
 const HERO_REGEN_PER_SEC := 0.08  # share of max HP healed per second
@@ -23,6 +24,10 @@ var team := "wild"  # "player" or "wild"
 var kind := "human"  # "human" or "wolf"
 var display_name := ""
 var is_hero := false
+## Whole-body sprite for units drawn from one image per view, e.g.
+## "units" / "caveman_spear" or "beasts" / "wolf_gray". Empty = layered figure.
+var sprite_category := ""
+var sprite_piece := ""
 var look: Dictionary = {}
 var gear: Dictionary = {}
 
@@ -98,6 +103,7 @@ func _process(delta: float) -> void:
 	_cooldown = maxf(0.0, _cooldown - delta)
 	_swing_t = maxf(0.0, _swing_t - delta)
 	_hurt_t = maxf(0.0, _hurt_t - delta)
+	modulate = Color(1.0, 0.55, 0.5) if _hurt_t > 0.0 else Color.WHITE
 	_since_hit += delta
 	if is_hero:
 		_heal_out_of_combat(delta)
@@ -245,6 +251,7 @@ func take_hit(amount: int, dtype: String, from_range: bool, attacker) -> void:
 	if hp <= 0:
 		hp = 0
 		died.emit(self)
+		_leave_corpse()
 		queue_free()
 
 
@@ -254,15 +261,31 @@ func _draw() -> void:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.5))
 		draw_arc(Vector2.ZERO, 18.0, 0.0, TAU, 32, Color(0.95, 0.80, 0.30, 0.9), 2.0)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	if kind == "wolf":
-		Figure.draw_wolf(self, Vector2.ZERO, PX, dir, _walk_t, _swing_t)
-	else:
-		Figure.draw_human(self, Vector2.ZERO, PX, look, gear, dir, _walk_t, _swing_t)
-	if _hurt_t > 0.0:
-		draw_rect(Rect2(Vector2(-12, -38), Vector2(24, 38)), Color(1, 0.2, 0.1, 0.35))
+	var drawn := false
+	if sprite_piece != "":
+		drawn = Figure.draw_whole(self, Vector2.ZERO, PX, sprite_category, sprite_piece, dir, _walk_t, _swing_t)
+	if not drawn:
+		if kind == "wolf":
+			Figure.draw_wolf(self, Vector2.ZERO, PX, dir, _walk_t, _swing_t)
+		else:
+			Figure.draw_human(self, Vector2.ZERO, PX, look, gear, dir, _walk_t, _swing_t)
 	if hp < max_hp or is_hero:
 		var w := 30.0
-		var top := -46.0 if kind == "human" else -40.0
+		var top := -56.0
 		draw_rect(Rect2(Vector2(-w / 2.0, top), Vector2(w, 4)), Color(0, 0, 0, 0.6))
 		var bar_col := Color(0.35, 0.80, 0.35) if team == "player" else Color(0.85, 0.30, 0.25)
 		draw_rect(Rect2(Vector2(-w / 2.0, top), Vector2(w * float(hp) / float(max_hp), 4)), bar_col)
+
+
+func _leave_corpse() -> void:
+	if sprite_piece == "" or get_parent() == null:
+		return
+	var tex = Figure.death_frame(sprite_category, sprite_piece)
+	if tex == null:
+		return
+	var body := Corpse.new()
+	body.tex = tex
+	body.mirrored = dir == Directions.SW or dir == Directions.W or dir == Directions.NW
+	body.scale_factor = PX / Figure.REF_PX
+	body.position = position
+	get_parent().add_child(body)

@@ -14,6 +14,7 @@ const UnitStats = preload("res://scripts/data/unit_stats.gd")
 const AppearanceCatalog = preload("res://scripts/data/appearance_catalog.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const Scenery = preload("res://scripts/world/scenery.gd")
+const SceneryCatalog = preload("res://scripts/data/scenery_catalog.gd")
 
 const WORLD := Rect2(0, 0, 3000, 2000)
 const START := Vector2(320, 1600)
@@ -37,8 +38,7 @@ var _camera: Camera2D
 var _follow := true
 var _over := false
 
-var _trees: Array = []  # [position, size]
-var _rocks: Array = []  # [position, size]
+var _scenery: Array = []  # [kind, position, piece, size, mirrored]
 var _tufts: Array = []  # positions
 var _marker_pos := Vector2.ZERO
 var _marker_t := 0.0
@@ -67,10 +67,8 @@ func _ready() -> void:
 	_units = Node2D.new()
 	_units.y_sort_enabled = true
 	add_child(_units)
-	for t in _trees:
-		_add_scenery("tree", t[0], t[1])
-	for r in _rocks:
-		_add_scenery("rock", r[0], r[1])
+	for item in _scenery:
+		_add_scenery(item[0], item[1], item[2], item[3], item[4])
 
 	hero = _spawn_human(START, "player", state.leader["look"], state.leader["gear"], true)
 	hero.display_name = str(state.leader["name"])
@@ -114,10 +112,12 @@ func _spawn_human(pos: Vector2, team: String, look: Dictionary, gear: Dictionary
 	return c
 
 
-func _add_scenery(kind: String, pos: Vector2, size: float) -> void:
+func _add_scenery(kind: String, pos: Vector2, piece: String, size: float, mirrored: bool) -> void:
 	var s := Scenery.new()
 	s.kind = kind
+	s.piece = piece
 	s.size = size
+	s.mirrored = mirrored
 	s.position = pos
 	_units.add_child(s)
 
@@ -128,8 +128,10 @@ func _spawn_caveman(pos: Vector2, guards_site: bool) -> void:
 	var look := AppearanceCatalog.random_look(rng)
 	look["tribe_color"] = "ash"
 	look["headwear"] = "bone_headband"
-	var c := _spawn_human(pos, "wild", look, {"body": "hide_wrap", "main_hand": "club", "off_hand": "none_off"}, false)
+	var c := _spawn_human(pos, "wild", look, {"body": "none_body", "main_hand": "spear", "off_hand": "none_off"}, false)
 	c.display_name = "Hostile caveman"
+	c.sprite_category = "units"
+	c.sprite_piece = "caveman_spear"
 	c.max_hp = 30
 	c.hp = 30
 	c.aggro_radius = 170.0
@@ -143,6 +145,8 @@ func _spawn_wolf(pos: Vector2, guards_site: bool) -> void:
 	c.team = "wild"
 	c.kind = "wolf"
 	c.display_name = "Wolf"
+	c.sprite_category = "beasts"
+	c.sprite_piece = "wolf_gray" if int(pos.x + pos.y) % 3 != 0 else "wolf_brown"
 	c.bounds = WORLD
 	c.apply_stats({"hp": 20, "damage": 3, "damage_type": "slash", "interval": 1.0, "range": 22.0,
 		"ranged": false, "armor": 0, "block": 0.0, "speed": 100.0})
@@ -156,15 +160,24 @@ func _spawn_wolf(pos: Vector2, guards_site: bool) -> void:
 func _generate_scenery() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
-	while _trees.size() < 140:
-		var p := Vector2(rng.randf_range(0, WORLD.size.x), rng.randf_range(0, WORLD.size.y))
-		if p.distance_to(START) < 220 or p.distance_to(SITE) < SITE_RADIUS + 60:
-			continue
-		_trees.append([p, rng.randf_range(18, 30)])
-	for i in 60:
-		_rocks.append([Vector2(rng.randf_range(0, WORLD.size.x), rng.randf_range(0, WORLD.size.y)), rng.randf_range(6, 14)])
+	_scatter(rng, "tree", SceneryCatalog.trees(), 150, 220.0, 24.0)
+	_scatter(rng, "bush", SceneryCatalog.bushes(), 70, 160.0, 14.0)
+	_scatter(rng, "rock", SceneryCatalog.rocks(), 55, 160.0, 10.0)
+	_scatter(rng, "plant", SceneryCatalog.ground_cover(), 260, 60.0, 8.0)
 	for i in 500:
 		_tufts.append(Vector2(rng.randf_range(0, WORLD.size.x), rng.randf_range(0, WORLD.size.y)))
+
+
+## Place `count` random pieces of one kind, keeping the start and the clearing open.
+func _scatter(rng: RandomNumberGenerator, kind: String, pieces: Array, count: int, keep_clear: float, size: float) -> void:
+	var placed := 0
+	while placed < count:
+		var p := Vector2(rng.randf_range(0, WORLD.size.x), rng.randf_range(0, WORLD.size.y))
+		if p.distance_to(START) < keep_clear or p.distance_to(SITE) < SITE_RADIUS + keep_clear * 0.3:
+			continue
+		var piece: String = pieces[rng.randi_range(0, pieces.size() - 1)]
+		_scenery.append([kind, p, piece, size * rng.randf_range(0.8, 1.25), rng.randf() < 0.5])
+		placed += 1
 
 
 # --- Frame update ------------------------------------------------------------

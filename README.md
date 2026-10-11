@@ -9,7 +9,7 @@ Stone Age to the space age. Built in **Godot 4** (GDScript), 2D pixel art, lands
 
 Both links rebuild automatically about 5 minutes after every push to `main`.
 
-## What's playable now (v0.2.0)
+## What's playable now (v0.3.0)
 
 | Prototype | Opening phase | What you can do |
 | --- | --- | --- |
@@ -19,7 +19,11 @@ Both links rebuild automatically about 5 minutes after every push to `main`.
 Battles use a **3/4 top-down view like the original StarCraft**, and units face **8 directions** (5 drawn,
 3 mirrored). The leader editor's **Turn** and **Walk** buttons preview every direction.
 
-All art is still placeholder pixel art drawn in code. Every clothing and gear piece is its own layer, and
+**First real art (0.3.0):** the title screen, all wilderness scenery (trees, bushes, rocks, plants),
+wolves and hostile spear-carrying cavemen come from ChatGPT concept sheets, with bodies left behind when
+they fall. The player's leader is still a code-drawn placeholder until layered character art exists.
+
+Remaining placeholders are pixel art drawn in code. Every clothing and gear piece is its own layer, and
 real sprites replace placeholders **one piece at a time** as they're added: see
 [`assets/README.md`](assets/README.md) for the folder layout, naming and the sheet-slicing tools.
 
