@@ -11,6 +11,13 @@ const SCRIPTS := [
 	"res://scripts/data/unit_stats.gd",
 	"res://scripts/data/scenery_catalog.gd",
 	"res://scripts/data/rig.gd",
+	"res://scripts/data/building_catalog.gd",
+	"res://scripts/data/village_layout.gd",
+	"res://scripts/render/building_draw.gd",
+	"res://scripts/ui/building_editor.gd",
+	"res://scripts/world/building.gd",
+	"res://scripts/world/map_controls.gd",
+	"res://scripts/world/village.gd",
 	"res://scripts/render/directions.gd",
 	"res://scripts/render/sprite_library.gd",
 	"res://scripts/render/figure.gd",
@@ -38,6 +45,10 @@ func _init() -> void:
 		_test_squad_size(stats)
 		_test_compute(stats)
 		_test_catalogs(gear, looks)
+	var layout = load("res://scripts/data/village_layout.gd")
+	var buildings = load("res://scripts/data/building_catalog.gd")
+	if layout != null and buildings != null:
+		_test_village(layout, buildings)
 	var dirs = load("res://scripts/render/directions.gd")
 	var sprites = load("res://scripts/render/sprite_library.gd")
 	var figure = load("res://scripts/render/figure.gd")
@@ -228,3 +239,23 @@ func _test_art(sprites, scenery) -> void:
 				if r == null or not r.has("main_hand") or float(r["hip"]) >= 0.0:
 					rig_ok = false
 	_check(rig_ok, "the rig has hands and hips for both bodies in all 5 views")
+
+
+func _test_village(layout, buildings) -> void:
+	print("Village:")
+	_check(buildings.get_type("hut")["housing"] == 4, "a hut houses a family of four")
+	_check(layout.population([{"type": "chief_hut"}, {"type": "hut"}, {"type": "hut"}]) == 8, "two huts = 8 soldiers you can field")
+	var a: Rect2i = layout.footprint_at("hut", Vector2(500, 400))
+	_check(a.size == Vector2i(3, 3), "a hut covers 3 x 3 cells")
+	_check(layout.can_place(a, []), "a hut fits in an empty clearing")
+	_check(not layout.can_place(a, [a]), "buildings can't overlap")
+	var b: Rect2i = layout.footprint_at("hut", Vector2(500 + 3 * 32, 400))
+	_check(layout.can_place(b, [a]), "buildings can stand side by side")
+	_check(not layout.can_place(layout.footprint_at("hut", Vector2(10, 10)), []), "nothing can be built outside the clearing")
+	for t in buildings.types():
+		var design: Dictionary = buildings.default_design(t["id"])
+		var ok := true
+		for slot_pair in buildings.part_slots():
+			if buildings.color_of(slot_pair[0], str(design.get(slot_pair[0], ""))) == Color.MAGENTA:
+				ok = false
+		_check(ok, "default %s design uses real parts" % t["id"])

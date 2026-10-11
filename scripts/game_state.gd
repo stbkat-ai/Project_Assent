@@ -12,6 +12,12 @@ const SAVE_VERSION := 1
 var leader: Dictionary = {}
 ## Gear ids the player can equip (weapons beyond the starting three unlock later).
 var unlocked: Array = GearCatalog.starting_unlocks()
+## Opening progress: the wilderness clearing has been claimed.
+var site_claimed := false
+## Building designs, by building type: {"chief_hut": {"walls": ..., "roof": ...}, "hut": {...}}
+var building_designs: Dictionary = {}
+## Buildings placed in the capital: [{"type": "hut", "x": int, "y": int}] (x, y = footprint corner cell)
+var village: Array = []
 
 
 func has_leader() -> bool:
@@ -20,6 +26,9 @@ func has_leader() -> bool:
 
 func new_leader() -> void:
 	unlocked = GearCatalog.starting_unlocks()
+	site_claimed = false
+	building_designs = {}
+	village = []
 	leader = {
 		"name": "Ugo",
 		"look": AppearanceCatalog.default_look(),
@@ -32,7 +41,15 @@ func save_game() -> void:
 	if file == null:
 		push_warning("Could not write save file: %s" % SAVE_PATH)
 		return
-	file.store_string(JSON.stringify({"version": SAVE_VERSION, "leader": leader, "unlocked": unlocked}))
+	file.store_string(JSON.stringify({"version": SAVE_VERSION, "leader": leader, "unlocked": unlocked,
+		"site_claimed": site_claimed, "building_designs": building_designs, "village": village}))
+
+
+func has_chief_hut() -> bool:
+	for b in village:
+		if str(b["type"]) == "chief_hut":
+			return true
+	return false
 
 
 func load_game() -> void:
@@ -48,6 +65,21 @@ func load_game() -> void:
 		for id in GearCatalog.starting_unlocks():
 			if not unlocked.has(id):
 				unlocked.append(id)
+	site_claimed = bool(data.get("site_claimed", false))
+	if data.get("building_designs") is Dictionary:
+		var designs: Dictionary = data["building_designs"]
+		for type_id in designs:
+			if designs[type_id] is Dictionary:
+				var parts := {}
+				var saved_parts: Dictionary = designs[type_id]
+				for slot in saved_parts:
+					parts[str(slot)] = str(saved_parts[slot])
+				building_designs[str(type_id)] = parts
+	if data.get("village") is Array:
+		village = []
+		for b in data["village"]:
+			if b is Dictionary and b.has("type"):
+				village.append({"type": str(b["type"]), "x": int(b.get("x", 0)), "y": int(b.get("y", 0))})
 	if data.get("leader") is Dictionary:
 		leader = _upgrade_leader(data["leader"])
 		var gear: Dictionary = leader["gear"]

@@ -216,9 +216,11 @@ func _update_objective() -> void:
 	elif not at_site:
 		_objective.text = "The clearing is safe. Walk into it to claim it"
 	else:
+		state.site_claimed = true
+		state.save_game()
 		_show_overlay("Your people have a home",
-			"%s has claimed the clearing. Next: designing and building the village (Prototype C)." % hero.display_name,
-			[["Play again", "retry"], ["Main menu", "menu"]])
+			"%s has claimed the clearing. Now design your huts and found the village." % hero.display_name,
+			[["Found the village", "village"], ["Main menu", "menu"]])
 
 
 func _on_creature_died(c: Node2D) -> void:

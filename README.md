@@ -9,12 +9,13 @@ Stone Age to the space age. Built in **Godot 4** (GDScript), 2D pixel art, lands
 
 Both links rebuild automatically about 5 minutes after every push to `main`.
 
-## What's playable now (v0.6.0)
+## What's playable now (v0.7.0)
 
 | Prototype | Opening phase | What you can do |
 | --- | --- | --- |
 | **A. The leader** | 1. The first hero | Design your tribal leader: body, skin, hair, Shaman/Caveman clothing pieces, war paint, tribe color, and gear (armor, weapon, shield). Gear sets the stats; looks are cosmetic. |
 | **B. The wilderness** | 2. Into the wilderness | Walk your leader across a wild map, fight wolves and hostile cavemen, and claim the clearing for your village. |
+| **C. The village** | 3. Found the village | Design the **Chief's Hut** and the **Hut** (walls, roof, doorway, decoration), then place them freely in the clearing. Buildings can't overlap (an invisible grid keeps them tidy). Each Hut houses a family of four: **4 soldiers you can field**. |
 
 Battles use a **3/4 top-down view like the original StarCraft**, and units face **8 directions** (5 drawn,
 3 mirrored). The leader editor's **Turn** and **Walk** buttons preview every direction.
@@ -42,6 +43,13 @@ Remaining placeholders are pixel art drawn in code. Every clothing and gear piec
 real sprites replace placeholders **one piece at a time** as they're added: see
 [`assets/README.md`](assets/README.md) for the folder layout, naming and the sheet-slicing tools.
 
+**Founding the village (0.7.0):** winning the wilderness now leads to the village. The first time, you
+design the Chief's Hut and then the Hut, the same way as the leader. In the village, tap **Build Hut**,
+tap a spot to preview it (green = fits, red = blocked), and tap the same spot again to build. Tap a
+building to move or remove it (the Chief's Hut can be moved but not removed). Both designs can be changed
+any time. Buildings are code-drawn placeholders until ChatGPT building art arrives. Load Game returns you to
+your village once the clearing is claimed.
+
 ### Controls
 
 - **Tap** the ground to walk; **tap an enemy** to attack (your leader also fights back automatically).
@@ -61,12 +69,12 @@ real sprites replace placeholders **one piece at a time** as they're added: see
 main.tscn                  entry scene (just runs scripts/main.gd)
 scripts/main.gd            screen manager + main menu
 scripts/game_state.gd      saved progress (JSON in user://save.json, versioned)
-scripts/data/              gear catalog, appearance catalog, unit_stats (gear -> stats, squad size, damage)
+scripts/data/              gear, appearance and building catalogs, unit_stats, village_layout (invisible grid)
 scripts/render/            figure (layered 3/4-view drawing), directions (8 dirs -> 5 views), sprite_library
 assets/sprites/            real art; overrides placeholders piece by piece (see assets/README.md)
 tools/                     slice_sheet.py and place_sprite.py: turn concept sheets into game sprites
-scripts/ui/                leader editor (Prototype A), shared UI style
-scripts/world/             wilderness map (Prototype B), creatures, projectiles
+scripts/ui/                leader editor (Prototype A), building editor (Prototype C), shared UI style
+scripts/world/             wilderness (Prototype B), village (Prototype C), creatures, buildings, map controls
 tests/run_tests.gd         headless tests (run in CI on every push)
 ```
 

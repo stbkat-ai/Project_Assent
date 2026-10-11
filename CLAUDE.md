@@ -21,6 +21,9 @@ https://claude.ai/code/artifact/c152695d-a333-43db-9af9-d9aa2f2796e3 — record 
   views by what they show. Source sheets are archived in `assets/source/`. Rules in `assets/README.md`.
   The leader uses paper-doll layers fitted to body landmarks by `tools/paper_doll/build.py` (male and
   female bodies; sheet layouts in `sheets.py`); with body art, layers lacking art are skipped, never mixed with code-drawn pieces.
+- Village (`scripts/world/village.gd`): an invisible grid (`scripts/data/village_layout.gd`) with free,
+  non-overlapping placement; buildings are designed like the leader (base + parts,
+  `scripts/data/building_catalog.gd`, drawn by `scripts/render/building_draw.gd`). A Hut houses 4 = 4 soldiers.
 - Tabs for indentation.
 
 ## Testing / CI

@@ -7,8 +7,10 @@ const LeaderEditor = preload("res://scripts/ui/leader_editor.gd")
 const Wilderness = preload("res://scripts/world/wilderness.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const TitleScreen = preload("res://scripts/ui/title_screen.gd")
+const BuildingEditor = preload("res://scripts/ui/building_editor.gd")
+const Village = preload("res://scripts/world/village.gd")
 
-const VERSION := "0.6.0 - female leader, gear art"
+const VERSION := "0.7.0 - founding the village"
 
 var state: GameState
 var _current: Node = null
@@ -56,7 +58,10 @@ func _on_title_choice(root: Control, action: String) -> void:
 				state.new_leader()
 				show_leader_editor()
 		"load":
-			if state.has_leader():
+			if state.has_leader() and state.site_claimed:
+				_panel(root, "Continue as %s" % state.leader["name"], "Your people are waiting in the clearing.",
+					[["To the village", show_village], ["Edit leader", show_leader_editor], ["Back", null]])
+			elif state.has_leader():
 				_panel(root, "Continue as %s" % state.leader["name"], "Your leader is waiting at the edge of the wilderness.",
 					[["Into the wilderness", show_wilderness], ["Edit leader", show_leader_editor], ["Back", null]])
 			else:
@@ -122,6 +127,35 @@ func show_wilderness() -> void:
 	world.finished.connect(func(action: String) -> void:
 		if action == "retry":
 			show_wilderness()
+		elif action == "village":
+			show_village()
 		else:
 			show_menu())
 	_swap(world)
+
+
+## Opening phase 3: design the Chief's Hut and the Hut (first time only), then the village.
+func show_village() -> void:
+	for type_id in ["chief_hut", "hut"]:
+		if not state.building_designs.has(type_id):
+			show_building_editor(type_id)
+			return
+	var village := Village.new()
+	village.setup(state)
+	village.finished.connect(func(action: String) -> void:
+		if action.begins_with("redesign:"):
+			show_building_editor(action.get_slice(":", 1))
+		else:
+			show_menu())
+	_swap(village)
+
+
+func show_building_editor(type_id: String) -> void:
+	var editor := BuildingEditor.new()
+	editor.setup(state, type_id)
+	editor.done.connect(func(action: String) -> void:
+		if action == "next":
+			show_village()
+		else:
+			show_menu())
+	_swap(editor)
