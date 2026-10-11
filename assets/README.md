@@ -31,7 +31,7 @@ Animations so far: `walk`. Attacks and hits are code-driven motion for now.
 | `hair` | `short`, `long`, `braids` | Drawn in **light grey**; the game tints it to the hair color. |
 | `clothing` | `loincloth`, `hide_skirt`, `animal_hood`, `bone_headband`, `fur_cloak` | |
 | `gear` | `hide_wrap`, `leather_armor`, `bone_hide`, `club`, `spear`, `stone_axe`, `flail`, `sling`, `hide_shield`, `bone_shield` | Weapons in the right hand, shields on the left arm, as worn. |
-| `beasts` | `wolf_gray`, `wolf_brown` | One whole animal per view. `e_death_0.png` = the body left behind. |
+| `beasts` | `wolf_gray`, `wolf_brown`, `boar`, `bear`, `deer_doe`, `deer_stag`, `fox`, `rabbit`, `squirrel`, `turkey` (ids in `scripts/data/wildlife_catalog.gd`) | One whole animal per view. `e_death_0.png` = the body left behind (the small animals have none yet). |
 | `units` | `caveman_spear` | Whole-character sprites for units that aren't customized (enemies, NPCs). |
 | `buildings` | `<type>_<slot>_<option>`, e.g. `hut_walls_hide`, `chief_hut_roof_fur` (ids in `scripts/data/building_catalog.gd`) | Only the `s` view. Each part (walls, roof, door, decor) is its own layer, drawn on a shared canvas with the **footprint center at the bottom center**. |
 | `scenery` | see `scripts/data/scenery_catalog.gd` (oaks, pines, birches, bushes, rocks, grass, ferns, flowers, mushrooms, stumps, log) | Only the `s` view is used; maps mirror them at random. |

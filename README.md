@@ -9,12 +9,12 @@ Stone Age to the space age. Built in **Godot 4** (GDScript), 2D pixel art, lands
 
 Both links rebuild automatically about 5 minutes after every push to `main`.
 
-## What's playable now (v0.7.0)
+## What's playable now (v0.8.0)
 
 | Prototype | Opening phase | What you can do |
 | --- | --- | --- |
 | **A. The leader** | 1. The first hero | Design your tribal leader: body, skin, hair, Shaman/Caveman clothing pieces, war paint, tribe color, and gear (armor, weapon, shield). Gear sets the stats; looks are cosmetic. |
-| **B. The wilderness** | 2. Into the wilderness | Walk your leader across a wild map, fight wolves and hostile cavemen, and claim the clearing for your village. |
+| **B. The wilderness** | 2. Into the wilderness | Walk your leader across a wild map, fight wolves, boars, a bear and hostile cavemen, hunt deer and small game for points, and claim the clearing for your village. Your **score** sets how many Huts the village can raise at first. |
 | **C. The village** | 3. Found the village | Design the **Chief's Hut** and the **Hut** (walls, roof, doorway, decoration), then place them freely in the clearing. Buildings can't overlap (an invisible grid keeps them tidy). Each Hut houses a family of four: **4 soldiers you can field**. |
 
 Battles use a **3/4 top-down view like the original StarCraft**, and units face **8 directions** (5 drawn,
@@ -42,6 +42,25 @@ leader is still the code-drawn placeholder.
 Remaining placeholders are pixel art drawn in code. Every clothing and gear piece is its own layer, and
 real sprites replace placeholders **one piece at a time** as they're added: see
 [`assets/README.md`](assets/README.md) for the folder layout, naming and the sheet-slicing tools.
+
+**Wildlife and score (0.8.0):** the wilderness is full of animals from the ChatGPT animal sheet, each
+with its own temper:
+
+| Animal | Temper | Points |
+| --- | --- | --- |
+| Rabbit, squirrel | skittish: runs from you | 5 |
+| Wild turkey | skittish | 10 |
+| Fox | defensive: only fights back when hit | 15 |
+| Doe | skittish | 20 |
+| Wolf | aggressive: attacks on sight | 25 |
+| Stag | defensive | 35 |
+| Hostile caveman | aggressive | 40 |
+| Wild boar | territorial: attacks if you come close | 40 |
+| Brown bear (one, in its corner of the map) | territorial | 100 |
+
+Your score is shown under the objective. When you claim the clearing, the village may raise **2 Huts, plus
+1 more for every 150 points (up to 6)**, so hunting is a risk you take for a bigger village. Retrying after
+your leader falls starts the score over.
 
 **Founding the village (0.7.0):** winning the wilderness now leads to the village. The first time, you
 design the Chief's Hut and then the Hut, the same way as the leader. In the village, tap **Build Hut**,

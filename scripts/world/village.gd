@@ -11,6 +11,7 @@ extends Node2D
 signal finished(action: String)  # "menu", or "redesign:<type>"
 
 const GameState = preload("res://scripts/game_state.gd")
+const WildlifeCatalog = preload("res://scripts/data/wildlife_catalog.gd")
 const BuildingCatalog = preload("res://scripts/data/building_catalog.gd")
 const VillageLayout = preload("res://scripts/data/village_layout.gd")
 const SceneryCatalog = preload("res://scripts/data/scenery_catalog.gd")
@@ -139,6 +140,19 @@ func _design(type_id: String) -> Dictionary:
 	return state.building_designs[type_id]
 
 
+func _hut_count() -> int:
+	var huts := 0
+	for b in _buildings:
+		if b.type_id == "hut":
+			huts += 1
+	return huts
+
+
+## How many Huts the people can raise for now (set by the wilderness score).
+func _hut_limit() -> int:
+	return WildlifeCatalog.huts_for_score(state.wilderness_score)
+
+
 func _save_village() -> void:
 	state.village = []
 	for b in _buildings:
@@ -200,7 +214,7 @@ func _place(rect: Rect2i) -> void:
 	_ghost.visible = false
 	_save_village()
 	# Keep placing huts until the player stops; the Chief's Hut is placed once.
-	if was == "hut":
+	if was == "hut" and _hut_count() < _hut_limit():
 		_start_placing("hut")
 	else:
 		_refresh_ui()
@@ -291,15 +305,12 @@ func _build_ui() -> void:
 func _refresh_ui() -> void:
 	if _status == null:
 		return
-	var huts := 0
-	for b in _buildings:
-		if b.type_id == "hut":
-			huts += 1
+	var huts := _hut_count()
 	var placed: Array = []
 	for b in _buildings:
 		placed.append({"type": b.type_id})
 	var pop := VillageLayout.population(placed)
-	_status.text = "Population %d   (%d hut%s)   -   soldiers you can field: %d" % [pop, huts, "" if huts == 1 else "s", pop]
+	_status.text = "Population %d   (Huts %d of %d)   -   soldiers you can field: %d" % [pop, huts, _hut_limit(), pop]
 
 	if _placing == "chief_hut":
 		_hint.text = "Tap where your Chief's Hut should stand, then tap again to build it."
@@ -309,6 +320,8 @@ func _refresh_ui() -> void:
 			_hint.text = "Can't build there: it overlaps another building or the forest."
 	elif _selected != null:
 		_hint.text = "%s selected." % BuildingCatalog.get_type(_selected.type_id).get("name", "Building")
+	elif huts >= _hut_limit():
+		_hint.text = "Your people have raised every Hut they can for now (score %d in the wilderness)." % state.wilderness_score
 	else:
 		_hint.text = "Pick a building below, or tap the ground to walk %s around." % _hero.display_name
 
@@ -329,6 +342,7 @@ func _refresh_ui() -> void:
 		return
 	var hut := UiStyle.button("Build Hut", 170)
 	hut.pressed.connect(func() -> void: _start_placing("hut"))
+	hut.disabled = huts >= _hut_limit()
 	_bar.add_child(hut)
 	var redesign_hut := UiStyle.button("Redesign Hut", 190)
 	redesign_hut.pressed.connect(func() -> void:

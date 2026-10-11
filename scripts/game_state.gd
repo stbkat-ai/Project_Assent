@@ -14,6 +14,8 @@ var leader: Dictionary = {}
 var unlocked: Array = GearCatalog.starting_unlocks()
 ## Opening progress: the wilderness clearing has been claimed.
 var site_claimed := false
+## Score from the wilderness run that claimed the site; sets the starting Hut limit.
+var wilderness_score := 0
 ## Building designs, by building type: {"chief_hut": {"walls": ..., "roof": ...}, "hut": {...}}
 var building_designs: Dictionary = {}
 ## Buildings placed in the capital: [{"type": "hut", "x": int, "y": int}] (x, y = footprint corner cell)
@@ -27,6 +29,7 @@ func has_leader() -> bool:
 func new_leader() -> void:
 	unlocked = GearCatalog.starting_unlocks()
 	site_claimed = false
+	wilderness_score = 0
 	building_designs = {}
 	village = []
 	leader = {
@@ -42,7 +45,7 @@ func save_game() -> void:
 		push_warning("Could not write save file: %s" % SAVE_PATH)
 		return
 	file.store_string(JSON.stringify({"version": SAVE_VERSION, "leader": leader, "unlocked": unlocked,
-		"site_claimed": site_claimed, "building_designs": building_designs, "village": village}))
+		"site_claimed": site_claimed, "wilderness_score": wilderness_score, "building_designs": building_designs, "village": village}))
 
 
 func has_chief_hut() -> bool:
@@ -66,6 +69,7 @@ func load_game() -> void:
 			if not unlocked.has(id):
 				unlocked.append(id)
 	site_claimed = bool(data.get("site_claimed", false))
+	wilderness_score = int(data.get("wilderness_score", 0))
 	if data.get("building_designs") is Dictionary:
 		var designs: Dictionary = data["building_designs"]
 		for type_id in designs:

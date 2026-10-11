@@ -19,9 +19,15 @@ const Corpse = preload("res://scripts/world/corpse.gd")
 const HIT_RADIUS := 26.0
 const HERO_REST_DELAY := 4.0  # seconds without being hit before healing starts
 const HERO_REGEN_PER_SEC := 0.08  # share of max HP healed per second
+const FLEE_RADIUS := 130.0  # skittish animals bolt when an enemy comes this close
+const FLEE_DISTANCE := 150.0
 
 var team := "wild"  # "player" or "wild"
-var kind := "human"  # "human" or "wolf"
+var kind := "human"  # "human" or "wolf" (any four-legged beast)
+## Which creature this is for scoring (see wildlife_catalog.gd), e.g. "boar" or "caveman".
+var species_id := ""
+## How a wild creature behaves: "aggressive", "territorial", "defensive" or "skittish".
+var temper := "aggressive"
 var display_name := ""
 var is_hero := false
 ## Whole-body sprite for units drawn from one image per view, e.g.
@@ -159,7 +165,17 @@ func _think(delta: float) -> void:
 		move_target = home
 		_returning = true
 		return
-	if target == null:
+	if temper == "skittish":
+		target = null
+		var threat = _nearest_enemy(FLEE_RADIUS)
+		if threat != null:
+			var away: Vector2 = position - threat.position
+			if away.length() < 0.01:
+				away = Vector2.RIGHT
+			move_target = (position + away.normalized() * FLEE_DISTANCE).clamp(bounds.position, bounds.end)
+			home = move_target
+			return
+	elif target == null:
 		var enemy = _nearest_enemy(aggro_radius)
 		if enemy != null:
 			target = enemy
@@ -243,7 +259,7 @@ func take_hit(amount: int, dtype: String, from_range: bool, attacker) -> void:
 	_hurt_t = 0.15
 	_since_hit = 0.0
 	if attacker != null and is_instance_valid(attacker) and target == null:
-		if team == "wild" and not _returning:
+		if team == "wild" and not _returning and temper != "skittish":
 			target = attacker
 			move_target = null
 		elif team == "player" and move_target == null:

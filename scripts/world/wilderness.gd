@@ -1,12 +1,14 @@
 extends Node2D
 ## Prototype B (opening phase 2): the leader alone in an untamed wilderness.
 ## Goal: reach the marked clearing and make it safe, so the tribe can settle.
+## Every creature defeated on the way scores points; the score sets how many Huts
+## the village can raise at first (wildlife_catalog.gd).
 ##
 ## Controls (phone): tap the ground to walk, tap an enemy to attack,
 ## drag to pan, pinch to zoom, tap the leader's card to re-center.
 ## Desktop: the same with the mouse, and the wheel to zoom.
 
-signal finished(action: String)  # "menu" or "retry"
+signal finished(action: String)  # "menu", "retry" or "village"
 
 const GameState = preload("res://scripts/game_state.gd")
 const Creature = preload("res://scripts/world/creature.gd")
@@ -15,6 +17,23 @@ const AppearanceCatalog = preload("res://scripts/data/appearance_catalog.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const Scenery = preload("res://scripts/world/scenery.gd")
 const SceneryCatalog = preload("res://scripts/data/scenery_catalog.gd")
+const WildlifeCatalog = preload("res://scripts/data/wildlife_catalog.gd")
+
+## Wildlife roaming the map (species id, position). Wolves, boars and the bear are
+## dangerous; deer, foxes and small game are easier points if you can catch them.
+const WILDLIFE := [
+	["rabbit", Vector2(600, 1450)], ["rabbit", Vector2(820, 1760)], ["rabbit", Vector2(1400, 1660)],
+	["rabbit", Vector2(1700, 1250)], ["rabbit", Vector2(2200, 1520)], ["rabbit", Vector2(950, 1000)],
+	["squirrel", Vector2(500, 1250)], ["squirrel", Vector2(1250, 1100)], ["squirrel", Vector2(1900, 1720)],
+	["squirrel", Vector2(2400, 1100)], ["squirrel", Vector2(700, 600)],
+	["turkey", Vector2(1100, 1560)], ["turkey", Vector2(1550, 850)], ["turkey", Vector2(2100, 1250)],
+	["turkey", Vector2(400, 900)],
+	["doe", Vector2(1300, 500)], ["doe", Vector2(1360, 590)], ["doe", Vector2(2000, 1500)], ["doe", Vector2(2650, 1300)],
+	["stag", Vector2(1240, 430)], ["stag", Vector2(2720, 1420)],
+	["fox", Vector2(900, 1350)], ["fox", Vector2(1700, 600)], ["fox", Vector2(2300, 1720)],
+	["boar", Vector2(1620, 1460)], ["boar", Vector2(2250, 880)], ["boar", Vector2(600, 400)],
+	["bear", Vector2(2760, 1760)],
+]
 
 const WORLD := Rect2(0, 0, 3000, 2000)
 const START := Vector2(320, 1600)
@@ -37,6 +56,8 @@ var _units: Node2D
 var _camera: Camera2D
 var _follow := true
 var _over := false
+var _score := 0
+var _kills := {}  # species id -> count
 
 var _scenery: Array = []  # [kind, position, piece, size, mirrored]
 var _tufts: Array = []  # positions
@@ -53,6 +74,7 @@ var _gestured := false
 
 # UI.
 var _objective: Label
+var _score_label: Label
 var _hero_card: Button
 var _overlay: Control
 
@@ -81,6 +103,8 @@ func _ready() -> void:
 	for p in [Vector2(2380, 430), Vector2(2700, 640)]:
 		_spawn_caveman(p, true)
 	_spawn_wolf(Vector2(2520, 760), true)
+	for entry in WILDLIFE:
+		_spawn_beast(str(entry[0]), entry[1], false)
 
 	_camera = Camera2D.new()
 	_camera.position = hero.position
@@ -130,6 +154,7 @@ func _spawn_caveman(pos: Vector2, guards_site: bool) -> void:
 	look["headwear"] = "bone_headband"
 	var c := _spawn_human(pos, "wild", look, {"body": "none_body", "main_hand": "spear", "off_hand": "none_off"}, false)
 	c.display_name = "Hostile caveman"
+	c.species_id = "caveman"
 	c.sprite_category = "units"
 	c.sprite_piece = "caveman_spear"
 	c.max_hp = 30
@@ -140,17 +165,24 @@ func _spawn_caveman(pos: Vector2, guards_site: bool) -> void:
 
 
 func _spawn_wolf(pos: Vector2, guards_site: bool) -> void:
+	_spawn_beast("wolf", pos, guards_site)
+
+
+func _spawn_beast(species_id: String, pos: Vector2, guards_site: bool) -> void:
+	var info := WildlifeCatalog.get_species(species_id)
 	var c := Creature.new()
 	c.position = pos
 	c.team = "wild"
-	c.kind = "wolf"
-	c.display_name = "Wolf"
+	c.kind = "wolf"  # the code-drawn fallback if a sprite is missing
+	c.species_id = species_id
+	c.temper = str(info.get("temper", "aggressive"))
+	c.display_name = str(info.get("name", species_id))
 	c.sprite_category = "beasts"
-	c.sprite_piece = "wolf_gray" if int(pos.x + pos.y) % 3 != 0 else "wolf_brown"
+	var pieces: Array = info.get("pieces", [species_id])
+	c.sprite_piece = str(pieces[int(pos.x + pos.y) % pieces.size()])
 	c.bounds = WORLD
-	c.apply_stats({"hp": 20, "damage": 3, "damage_type": "slash", "interval": 1.0, "range": 22.0,
-		"ranged": false, "armor": 0, "block": 0.0, "speed": 100.0})
-	c.aggro_radius = 190.0
+	c.apply_stats(WildlifeCatalog.stats(species_id))
+	c.aggro_radius = float(info.get("aggro", 0.0))
 	c.died.connect(_on_creature_died)
 	if guards_site:
 		c.add_to_group("site_guards")
@@ -217,13 +249,40 @@ func _update_objective() -> void:
 		_objective.text = "The clearing is safe. Walk into it to claim it"
 	else:
 		state.site_claimed = true
+		state.wilderness_score = _score
 		state.save_game()
+		var huts := WildlifeCatalog.huts_for_score(_score)
 		_show_overlay("Your people have a home",
-			"%s has claimed the clearing. Now design your huts and found the village." % hero.display_name,
+			"%s has claimed the clearing.\n\nScore: %d%s\n\nYour people can raise %d Huts at first (%d soldiers). Now design your huts and found the village."
+				% [hero.display_name, _score, _kill_summary(), huts, huts * 4],
 			[["Found the village", "village"], ["Main menu", "menu"]])
 
 
+func _kill_summary() -> String:
+	if _kills.is_empty():
+		return ""
+	var parts: Array = []
+	for id in _kills:
+		var kind_name := "Hostile caveman" if str(id) == "caveman" else str(WildlifeCatalog.get_species(str(id)).get("name", id))
+		parts.append("%s x%d" % [kind_name, _kills[id]])
+	return "  (" + ", ".join(parts) + ")"
+
+
+func _score_text() -> String:
+	var huts := WildlifeCatalog.huts_for_score(_score)
+	var next := WildlifeCatalog.points_to_next_hut(_score)
+	var tail := "  (%d more for another)" % next if next > 0 else "  (the most for now)"
+	return "Score %d   -   Huts for your village: %d%s" % [_score, huts, tail]
+
+
 func _on_creature_died(c: Node2D) -> void:
+	if c != hero and not _over:
+		var dead = c
+		if dead.team != "player" and dead.species_id != "":
+			_score += WildlifeCatalog.points(dead.species_id)
+			_kills[dead.species_id] = int(_kills.get(dead.species_id, 0)) + 1
+			_score_label.text = _score_text()
+		return
 	if c == hero:
 		_show_overlay("%s has fallen" % hero.display_name,
 			"The wilderness is not kind. Try different gear, or pick your fights more carefully.",
@@ -358,8 +417,12 @@ func _build_ui() -> void:
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.position = Vector2(12, 12)
 	root.add_child(top)
+	var top_box := VBoxContainer.new()
+	top.add_child(top_box)
 	_objective = UiStyle.label("", 20)
-	top.add_child(_objective)
+	top_box.add_child(_objective)
+	_score_label = UiStyle.label(_score_text(), 17, UiStyle.GOLD)
+	top_box.add_child(_score_label)
 
 	var menu := UiStyle.button("Menu", 110)
 	menu.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)

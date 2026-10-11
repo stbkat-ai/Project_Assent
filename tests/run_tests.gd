@@ -13,6 +13,7 @@ const SCRIPTS := [
 	"res://scripts/data/rig.gd",
 	"res://scripts/data/building_catalog.gd",
 	"res://scripts/data/village_layout.gd",
+	"res://scripts/data/wildlife_catalog.gd",
 	"res://scripts/render/building_draw.gd",
 	"res://scripts/ui/building_editor.gd",
 	"res://scripts/world/building.gd",
@@ -49,6 +50,9 @@ func _init() -> void:
 	var buildings = load("res://scripts/data/building_catalog.gd")
 	if layout != null and buildings != null:
 		_test_village(layout, buildings)
+	var wildlife = load("res://scripts/data/wildlife_catalog.gd")
+	if wildlife != null:
+		_test_wildlife(wildlife)
 	var dirs = load("res://scripts/render/directions.gd")
 	var sprites = load("res://scripts/render/sprite_library.gd")
 	var figure = load("res://scripts/render/figure.gd")
@@ -210,6 +214,16 @@ func _test_art(sprites, scenery) -> void:
 				views_ok = false
 		_check(views_ok, "%s has all 5 views" % unit[1])
 		_check(not sprites.frames(unit[0], unit[1], "e", "death").is_empty(), "%s has a death sprite" % unit[1])
+	var wildlife_art = load("res://scripts/data/wildlife_catalog.gd")
+	var animals_ok := true
+	var animals_missing := PackedStringArray()
+	for s in wildlife_art.species():
+		for piece in s["pieces"]:
+			for view in ["s", "se", "e", "ne", "n"]:
+				if sprites.frames("beasts", str(piece), view).is_empty():
+					animals_ok = false
+					animals_missing.append("%s/%s" % [piece, view])
+	_check(animals_ok, "every wilderness animal has all 5 views (missing: %s)" % ", ".join(animals_missing))
 	_check(ResourceLoader.exists("res://assets/ui/title.png"), "title screen art exists")
 	var bodies_ok := true
 	for skin in ["skin1", "skin2", "skin3", "skin4", "skin5", "skin6"]:
@@ -259,3 +273,23 @@ func _test_village(layout, buildings) -> void:
 			if buildings.color_of(slot_pair[0], str(design.get(slot_pair[0], ""))) == Color.MAGENTA:
 				ok = false
 		_check(ok, "default %s design uses real parts" % t["id"])
+
+
+func _test_wildlife(wildlife) -> void:
+	print("Wilderness score:")
+	_check(wildlife.huts_for_score(0) == 2, "with no score the village starts with 2 Huts")
+	_check(wildlife.huts_for_score(149) == 2, "149 points is not yet a third Hut")
+	_check(wildlife.huts_for_score(150) == 3, "150 points earns a third Hut")
+	_check(wildlife.huts_for_score(100000) == 6, "Huts are capped at 6 for now")
+	_check(wildlife.points_to_next_hut(100) == 50, "100 points is 50 short of the next Hut")
+	_check(wildlife.points_to_next_hut(900) == 0, "nothing more to earn at the cap")
+	_check(wildlife.points("bear") > wildlife.points("wolf") and wildlife.points("wolf") > wildlife.points("rabbit"),
+		"dangerous animals are worth more")
+	_check(wildlife.points("caveman") > 0, "hostile cavemen score points")
+	var tempers_ok := true
+	for s in wildlife.species():
+		if not ["aggressive", "territorial", "defensive", "skittish"].has(s["temper"]):
+			tempers_ok = false
+		if s["temper"] == "skittish" and int(s["damage"]) != 0:
+			tempers_ok = false
+	_check(tempers_ok, "every animal has a known temper, and skittish ones never fight back")
