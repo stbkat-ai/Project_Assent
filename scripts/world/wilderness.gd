@@ -69,13 +69,12 @@ func _ready() -> void:
 	hero.selected = true
 
 	# Two wolf packs on the way, cavemen holding the clearing.
-	for p in [Vector2(1050, 1300), Vector2(1110, 1360), Vector2(1000, 1380)]:
+	for p in [Vector2(1050, 1300), Vector2(1120, 1370)]:
 		_spawn_wolf(p, false)
-	for p in [Vector2(1800, 900), Vector2(1880, 960)]:
-		_spawn_wolf(p, false)
-	for p in [Vector2(2450, 470), Vector2(2650, 600), Vector2(2560, 700)]:
+	_spawn_wolf(Vector2(1850, 930), false)
+	for p in [Vector2(2380, 430), Vector2(2700, 640)]:
 		_spawn_caveman(p, true)
-	_spawn_wolf(Vector2(2300, 380), true)
+	_spawn_wolf(Vector2(2520, 760), true)
 
 	_camera = Camera2D.new()
 	_camera.position = hero.position
@@ -115,7 +114,9 @@ func _spawn_caveman(pos: Vector2, guards_site: bool) -> void:
 	look["headwear"] = "bone_headband"
 	var c := _spawn_human(pos, "wild", look, {"body": "hide_wrap", "main_hand": "club", "off_hand": "none_off"}, false)
 	c.display_name = "Hostile caveman"
-	c.aggro_radius = 220.0
+	c.max_hp = 30
+	c.hp = 30
+	c.aggro_radius = 170.0
 	if guards_site:
 		c.add_to_group("site_guards")
 
@@ -127,9 +128,9 @@ func _spawn_wolf(pos: Vector2, guards_site: bool) -> void:
 	c.kind = "wolf"
 	c.display_name = "Wolf"
 	c.bounds = WORLD
-	c.apply_stats({"hp": 28, "damage": 4, "damage_type": "slash", "interval": 0.8, "range": 22.0,
-		"ranged": false, "armor": 0, "block": 0.0, "speed": 120.0})
-	c.aggro_radius = 260.0
+	c.apply_stats({"hp": 20, "damage": 3, "damage_type": "slash", "interval": 1.0, "range": 22.0,
+		"ranged": false, "armor": 0, "block": 0.0, "speed": 100.0})
+	c.aggro_radius = 190.0
 	c.died.connect(_on_creature_died)
 	if guards_site:
 		c.add_to_group("site_guards")
@@ -353,7 +354,7 @@ func _build_ui() -> void:
 	_hero_card.pressed.connect(func() -> void: _follow = true)
 	root.add_child(_hero_card)
 
-	var hint := UiStyle.label("Tap to move  -  tap an enemy to attack  -  drag to look around  -  pinch to zoom", 16, UiStyle.MUTED)
+	var hint := UiStyle.label("Tap to move  -  tap an enemy to attack  -  drag to look  -  pinch to zoom  -  rest to heal", 16, UiStyle.MUTED)
 	hint.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
 	hint.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	hint.grow_vertical = Control.GROW_DIRECTION_BEGIN

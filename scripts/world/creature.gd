@@ -15,6 +15,8 @@ const Projectile = preload("res://scripts/world/projectile.gd")
 const PX := 2.0  # screen size of one figure pixel at zoom 1
 const BODY_CENTER := Vector2(0, -18)
 const HIT_RADIUS := 26.0
+const HERO_REST_DELAY := 4.0  # seconds without being hit before healing starts
+const HERO_REGEN_PER_SEC := 0.08  # share of max HP healed per second
 
 var team := "wild"  # "player" or "wild"
 var kind := "human"  # "human" or "wolf"
@@ -50,6 +52,8 @@ var _swing_t := 0.0
 var _hurt_t := 0.0
 var _wander_t := 0.0
 var _returning := false
+var _since_hit := 99.0
+var _regen := 0.0
 var _rng := RandomNumberGenerator.new()
 
 
@@ -93,6 +97,9 @@ func _process(delta: float) -> void:
 	_cooldown = maxf(0.0, _cooldown - delta)
 	_swing_t = maxf(0.0, _swing_t - delta)
 	_hurt_t = maxf(0.0, _hurt_t - delta)
+	_since_hit += delta
+	if is_hero:
+		_heal_out_of_combat(delta)
 
 	if target != null and (not is_instance_valid(target) or not target.is_alive()):
 		target = null
@@ -122,6 +129,18 @@ func _process(delta: float) -> void:
 	_separate(delta)
 	_walk_t = _walk_t + delta if moving else 0.0
 	queue_redraw()
+
+
+## Heroes recover when they haven't been hit for a few seconds.
+func _heal_out_of_combat(delta: float) -> void:
+	if _since_hit < HERO_REST_DELAY or hp >= max_hp:
+		_regen = 0.0
+		return
+	_regen += max_hp * HERO_REGEN_PER_SEC * delta
+	if _regen >= 1.0:
+		var amount := int(_regen)
+		_regen -= amount
+		hp = mini(max_hp, hp + amount)
 
 
 func _think(delta: float) -> void:
@@ -214,6 +233,7 @@ func take_hit(amount: int, dtype: String, from_range: bool, attacker) -> void:
 		return
 	hp -= dealt
 	_hurt_t = 0.15
+	_since_hit = 0.0
 	if attacker != null and is_instance_valid(attacker) and target == null:
 		if team == "wild" and not _returning:
 			target = attacker

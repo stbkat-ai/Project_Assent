@@ -84,7 +84,7 @@ func _test_compute(stats) -> void:
 	_check(slinger["ranged"] == true, "sling is ranged")
 	_check(slinger["squad_size"] == 8, "cheap slingers come 8 to a squad")
 	var hero = stats.compute({"body": "none_body", "main_hand": "club", "off_hand": "none_off"}, true)
-	_check(hero["hp"] == 120 and hero["damage"] == 9, "hero gets 3x HP and 1.5x damage")
+	_check(hero["hp"] == 200 and hero["damage"] == 12, "hero gets 5x HP and 2x damage")
 	var unknown = stats.compute({"body": "made_up_item"})
 	_check(unknown["hp"] == 40 and unknown["damage"] == 2, "unknown gear ids are ignored safely")
 

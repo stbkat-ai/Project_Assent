@@ -5,8 +5,8 @@ extends RefCounted
 const GearCatalog = preload("res://scripts/data/gear_catalog.gd")
 
 const BASE_HP := 40
-const HERO_HP_MULT := 3.0
-const HERO_DAMAGE_MULT := 1.5
+const HERO_HP_MULT := 5.0
+const HERO_DAMAGE_MULT := 2.0
 const BASE_SPEED := 80.0
 const BASE_COST := 5
 const MAX_BLOCK := 0.75

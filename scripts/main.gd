@@ -7,7 +7,7 @@ const LeaderEditor = preload("res://scripts/ui/leader_editor.gd")
 const Wilderness = preload("res://scripts/world/wilderness.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 
-const VERSION := "0.1.0 - Prototypes A + B"
+const VERSION := "0.1.1 - Prototypes A + B"
 
 var state: GameState
 var _current: Node = null

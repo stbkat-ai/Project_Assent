@@ -9,7 +9,7 @@ Stone Age to the space age. Built in **Godot 4** (GDScript), 2D pixel art, lands
 
 Both links rebuild automatically about 5 minutes after every push to `main`.
 
-## What's playable now (v0.1.0)
+## What's playable now (v0.1.1)
 
 | Prototype | Opening phase | What you can do |
 | --- | --- | --- |
