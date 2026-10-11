@@ -19,8 +19,8 @@ https://claude.ai/code/artifact/c152695d-a333-43db-9af9-d9aa2f2796e3 — record 
   sheets: slice with `tools/slice_sheet.py`, check `_index.png`, show Luke the cut pieces, then
   `tools/place_sprite.py` (row-style sheets: `tools/slice_rows.py`). ChatGPT mislabels directions: map
   views by what they show. Source sheets are archived in `assets/source/`. Rules in `assets/README.md`.
-  The leader uses paper-doll layers fitted to body landmarks by `tools/paper_doll/` (regenerate with
-  `gen.py`); with body art, layers lacking art are skipped, never mixed with code-drawn pieces.
+  The leader uses paper-doll layers fitted to body landmarks by `tools/paper_doll/build.py` (male and
+  female bodies; sheet layouts in `sheets.py`); with body art, layers lacking art are skipped, never mixed with code-drawn pieces.
 - Tabs for indentation.
 
 ## Testing / CI

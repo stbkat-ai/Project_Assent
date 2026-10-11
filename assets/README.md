@@ -78,24 +78,29 @@ python3 tools/place_sprite.py beasts wolf_gray e=/tmp/rows/wolf_gray_12.png --an
 
 ## The leader: paper-doll layers (`tools/paper_doll/`)
 
-The male leader is drawn from `sheet_paper_doll_male.png`: a 13 x 5 grid (rows = base body, then one piece
-per row; columns = s, se, e, ne, n). ChatGPT drew each piece centered in its own cell at its own scale, so
-the cells don't line up by themselves. `tools/paper_doll/` fits every piece to landmarks on the body (head,
-torso, hands per view, in `fit.py`), puts all layers of a view on one shared canvas with the feet at the
-bottom center, and shrinks them 3x to true pixels.
+Built by `python3 tools/paper_doll/build.py` from the ChatGPT sheets in `assets/source/` (cell layouts in
+`tools/paper_doll/sheets.py`):
 
-- `bodies/body_male__<skin>__<hair color>/` — the body (it includes the loincloth and its own hair),
-  recolored per skin tone and hair color.
-- `hair/<style>__<hair color>/` — `long`, `braids`; `gear/` — `hide_wrap`, `leather_armor`, `spear`,
-  `bone_spear`, `hide_shield`, `bone_shield`; `clothing/` — `fur_cloak` (mantle), `animal_hood` (wolf pelt),
-  `antler_skull`.
+- `sheet_paper_doll_male_2.png` — bald male body, hair (long, braids, short), hide wrap, leather armor,
+  fur mantle, bone-and-hide armor, hide skirt, bone headband, red war paint, club, axe, flail, sling
+- `sheet_paper_doll_female.png` — bald female body, hair, armor, mantle, skirt, headband, wolf hood,
+  antler helm, wooden shield
+- `sheet_weapons.png` — stone spear, bone spear, spiked club, stone axe (used for both bodies)
+- `sheet_paper_doll_male.png` — the first male sheet; still used for the shields and the male helmets
 
-Regenerate everything with `python3 tools/paper_doll/gen.py`. When a body has art, layers without art are
-left out (code-drawn pieces don't line up with painted bodies); the leader editor marks them with `*`.
-A **female** body sheet in the same format is still needed.
+ChatGPT draws each piece centered in its own cell at its own scale, so the build fits every piece to
+landmarks on its body (head, torso, waist, hands per view, in `BODIES` in `build.py`), puts all layers of a
+view on one canvas with the feet at the bottom center, and shrinks them to game size. Weapons are held at a
+grip point near the handle end and lean forward in side views. Skin tone, hair color and war paint are
+recolored into variants; skin-colored pixels are removed from hair so the body's face shows through.
 
-**Animation is done in code** (no walk/attack frames needed yet): `gen.py` also writes
-`scripts/data/rig_male.gd` with each view's hand and hip positions. Walking splits the body below the hip
+Ids: `bodies/body_<sex>__<skin>`, `hair/<sex>_<style>__<color>`, `gear/<sex>_<id>`, `clothing/<sex>_<id>`,
+`clothing/<sex>_paint_<color>__<skin>`. When a body has art, layers without art are left out (code-drawn
+pieces don't line up with painted bodies); the leader editor marks them with `*`.
+`python3 tools/paper_doll/preview.py out.png` renders outfit previews.
+
+**Animation is done in code** (no walk/attack frames needed yet): `build.py` also writes
+`scripts/data/rig.gd` with each body's hand and hip positions per view. Walking splits the body below the hip
 into two halves that lift in turn while the upper body bobs; attacking leans the body forward and thrusts
 the weapon out from the hand. Whole-body sprites (wolves, cavemen) get the same leg trick. Real animation
 frames (`<view>_walk_<n>.png`) can replace this later.

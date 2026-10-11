@@ -13,7 +13,7 @@ extends RefCounted
 const AppearanceCatalog = preload("res://scripts/data/appearance_catalog.gd")
 const Directions = preload("res://scripts/render/directions.gd")
 const SpriteLibrary = preload("res://scripts/render/sprite_library.gd")
-const RigMale = preload("res://scripts/data/rig_male.gd")
+const Rig = preload("res://scripts/data/rig.gd")
 const GearCatalog = preload("res://scripts/data/gear_catalog.gd")
 
 ## The direction a figure faces, in each drawn view's own art space (used to
@@ -70,15 +70,19 @@ static func _shadow(ci: CanvasItem, origin: Vector2, px: float, width: float) ->
 
 ## The sprite piece shown on each layer for this look and gear: layer -> [category, piece id, tint].
 ## An empty piece id means the layer is not drawn.
-## Layer order when drawn with real art (the fur mantle is worn over the body).
-const ART_FRONT_ORDER := ["body", "armor", "cloak", "hair", "headwear", "shield", "weapon"]
-const ART_BACK_ORDER := ["shield", "weapon", "body", "armor", "cloak", "hair", "headwear"]
+## Layer order when drawn with real art (the fur mantle is worn over the body;
+## war paint is a painted head drawn over the body's head).
+const ART_FRONT_ORDER := ["body", "lower", "paint", "armor", "cloak", "hair", "headwear", "shield", "weapon"]
+const ART_BACK_ORDER := ["shield", "weapon", "body", "lower", "paint", "armor", "cloak", "hair", "headwear"]
 
 
-## The sprite piece shown on each layer for this look and gear: layer -> [category, piece id].
-## An empty piece id means the layer is not drawn. Body and hair art come pre-colored
-## per skin tone and hair color (e.g. body_male__skin3__black, long__blond).
+## What each layer shows for this look and gear: layer -> [category, art id, base id].
+## The base id is the gear / clothing id ("" = layer not drawn); the art id is the
+## sprite to use, which is per body (sex) and pre-colored for skin and hair:
+## body_female__skin3, male_long__blond, female_leather_armor, male_paint_red__skin5.
 static func pieces(look: Dictionary, gear: Dictionary) -> Dictionary:
+	var sex := str(look.get("sex", "male"))
+	var skin := str(look.get("skin", "skin3"))
 	var hair_id := str(look.get("hair", "short"))
 	var hair_color := str(look.get("hair_color", "black"))
 	var body_gear := str(gear.get("body", "none_body"))
@@ -86,16 +90,32 @@ static func pieces(look: Dictionary, gear: Dictionary) -> Dictionary:
 	var main := str(gear.get("main_hand", "fists"))
 	var headwear := str(look.get("headwear", "none"))
 	var cloak := str(look.get("cloak", "none"))
-	return {
-		"body": ["bodies", "body_%s__%s__%s" % [str(look.get("sex", "male")), str(look.get("skin", "skin3")), hair_color]],
-		"lower": ["clothing", str(look.get("lower", "loincloth"))],
-		"armor": ["gear", "" if body_gear == "none_body" else body_gear],
-		"hair": ["hair", "" if hair_id == "bald" else hair_id + "__" + hair_color],
-		"headwear": ["clothing", "" if headwear == "none" else headwear],
-		"cloak": ["clothing", "" if cloak == "none" else cloak],
-		"shield": ["gear", "" if off == "none_off" or GearCatalog.is_two_handed(main) else off],
-		"weapon": ["gear", "" if main == "fists" else main],
+	var paint := str(look.get("paint", "none"))
+	var lower := str(look.get("lower", "loincloth"))
+	var out := {
+		"body": ["bodies", "body_%s__%s" % [sex, skin], "body_" + sex],
+		"lower": ["clothing", "", "" if lower == "loincloth" else lower],
+		"paint": ["clothing", "", "" if paint == "none" else paint],
+		"armor": ["gear", "", "" if body_gear == "none_body" else body_gear],
+		"hair": ["hair", "", "" if hair_id == "bald" else hair_id],
+		"headwear": ["clothing", "", "" if headwear == "none" else headwear],
+		"cloak": ["clothing", "", "" if cloak == "none" else cloak],
+		"shield": ["gear", "", "" if off == "none_off" or GearCatalog.is_two_handed(main) else off],
+		"weapon": ["gear", "", "" if main == "fists" else main],
 	}
+	for layer in out:
+		var entry: Array = out[layer]
+		var base := str(entry[2])
+		if layer == "body" or base == "":
+			continue
+		match str(layer):
+			"hair":
+				entry[1] = "%s_%s__%s" % [sex, base, hair_color]
+			"paint":
+				entry[1] = "%s_paint_%s__%s" % [sex, base, skin]
+			_:
+				entry[1] = "%s_%s" % [sex, base]
+	return out
 
 
 ## True when this look has body art, so the figure is drawn from sprites.
@@ -104,9 +124,34 @@ static func has_body_art(look: Dictionary) -> bool:
 	return not SpriteLibrary.frames(str(body[0]), str(body[1]), "s").is_empty()
 
 
-## True when a piece will actually be drawn with art (used to flag options in the editor).
-static func piece_has_art(category: String, piece: String) -> bool:
-	return piece == "" or not SpriteLibrary.frames(category, piece, "s").is_empty()
+## True when choosing `id` for editor field `key` shows up in the art for this look
+## (used to flag choices that have no art yet).
+static func option_has_art(key: String, id: String, look: Dictionary) -> bool:
+	var trial := look.duplicate()
+	var gear := {}
+	var layer := ""
+	match key:
+		"hair":
+			trial["hair"] = id
+			layer = "hair"
+		"headwear", "cloak", "paint", "lower":
+			trial[key] = id
+			layer = {"headwear": "headwear", "cloak": "cloak", "paint": "paint", "lower": "lower"}[key]
+		"body":
+			gear["body"] = id
+			layer = "armor"
+		"main_hand":
+			gear["main_hand"] = id
+			layer = "weapon"
+		"off_hand":
+			gear["off_hand"] = id
+			layer = "shield"
+		_:
+			return true
+	var entry: Array = pieces(trial, gear)[layer]
+	if str(entry[2]) == "":
+		return true  # "none" draws nothing, and bald just shows the bald body
+	return not SpriteLibrary.frames(str(entry[0]), str(entry[1]), "s").is_empty()
 
 
 ## A person facing `dir` (0-7, see directions.gd). With body art, every layer
@@ -131,16 +176,16 @@ static func draw_human(ci: CanvasItem, origin: Vector2, px: float, look: Diction
 	var layer_pieces := pieces(look, gear)
 	var back := Directions.is_back_view(c.view)
 	if has_body_art(look):
-		_draw_art_layers(ci, origin, px, c.view, c.mirrored, back, layer_pieces, walk_t, swing_t,
+		_draw_art_layers(ci, origin, px, c.view, c.mirrored, back, layer_pieces, walk_t, swing_t, str(look.get("sex", "male")),
 			GearCatalog.attack_kind(str(gear.get("main_hand", "fists"))))
 		return
 	for layer in (BACK_ORDER if back else FRONT_ORDER):
 		var piece: Array = layer_pieces[layer]
-		if str(piece[1]) == "":
+		var id := str(piece[2])
+		if layer == "lower" and id == "":
+			id = "loincloth"  # drawn as part of the body in the art, but not in the placeholder
+		if id == "":
 			continue
-		var id := str(piece[1])
-		if layer == "hair":
-			id = id.get_slice("__", 0)
 		_placeholder(c, str(layer), id, look)
 
 
@@ -148,9 +193,10 @@ static func draw_human(ci: CanvasItem, origin: Vector2, px: float, look: Diction
 ## walking lifts the legs in turn and bobs the upper body; attacking leans the
 ## body forward and thrusts the weapon out from the hand.
 static func _draw_art_layers(ci: CanvasItem, origin: Vector2, px: float, view: String, mirrored: bool, back: bool,
-		layer_pieces: Dictionary, walk_t: float, swing_t: float, attack: String = "thrust") -> void:
+		layer_pieces: Dictionary, walk_t: float, swing_t: float, sex: String = "male", attack: String = "thrust") -> void:
 	var s := px / REF_PX * SpriteLibrary.SPRITE_SCALE
-	var rig: Dictionary = RigMale.VIEWS.get(view, {})
+	var rig_views: Dictionary = Rig.BODIES.get(sex, Rig.BODIES["male"])
+	var rig: Dictionary = rig_views.get(view, {})
 	var hip := -float(rig.get("hip", -13.0))
 	var hand: Vector2 = rig.get("main_hand", Vector2(8, -16))
 	var walking := walk_t > 0.0

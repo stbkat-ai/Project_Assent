@@ -10,7 +10,7 @@ const SCRIPTS := [
 	"res://scripts/data/appearance_catalog.gd",
 	"res://scripts/data/unit_stats.gd",
 	"res://scripts/data/scenery_catalog.gd",
-	"res://scripts/data/rig_male.gd",
+	"res://scripts/data/rig.gd",
 	"res://scripts/render/directions.gd",
 	"res://scripts/render/sprite_library.gd",
 	"res://scripts/render/figure.gd",
@@ -172,15 +172,17 @@ func _test_sprites(sprites, figure) -> void:
 	print("Sprites:")
 	_check(sprites.frames("gear", "no_such_piece", "s", "walk").is_empty(), "missing art falls back to placeholders")
 	_check(sprites.frame_at("gear", "no_such_piece", "s", "", 0.0) == null, "missing frame is null")
-	var p: Dictionary = figure.pieces({"sex": "female", "hair": "bald", "headwear": "none", "cloak": "fur_cloak"},
-		{"body": "leather_armor", "main_hand": "flail", "off_hand": "none_off"})
-	_check(p["body"][1].begins_with("body_female__"), "body piece follows sex")
-	_check(p["hair"][1] == "", "bald draws no hair layer")
-	var q: Dictionary = figure.pieces({"sex": "male", "skin": "skin5", "hair": "braids", "hair_color": "grey"}, {})
-	_check(q["body"][1] == "body_male__skin5__grey", "body art is picked per skin tone and hair color")
-	_check(q["hair"][1] == "braids__grey", "hair art is picked per hair color")
-	_check(p["headwear"][1] == "" and p["cloak"][1] == "fur_cloak", "clothing pieces map to sprite ids")
-	_check(p["armor"][1] == "leather_armor" and p["weapon"][1] == "flail" and p["shield"][1] == "", "gear maps to sprite ids")
+	var p: Dictionary = figure.pieces({"sex": "female", "skin": "skin2", "hair": "bald", "headwear": "none", "cloak": "fur_cloak"},
+		{"body": "leather_armor", "main_hand": "great_club", "off_hand": "bone_shield"})
+	_check(p["body"][1] == "body_female__skin2", "body art is picked per sex and skin tone")
+	_check(p["hair"][1] == "" and p["headwear"][1] == "", "bald and no headwear draw nothing")
+	_check(p["cloak"][1] == "female_fur_cloak" and p["armor"][1] == "female_leather_armor", "worn pieces use the body's own art")
+	_check(p["shield"][2] == "", "no shield with a two-handed weapon")
+	var q: Dictionary = figure.pieces({"sex": "male", "skin": "skin5", "hair": "braids", "hair_color": "grey", "paint": "red"},
+		{"main_hand": "club"})
+	_check(q["hair"][1] == "male_braids__grey", "hair art is picked per sex and hair color")
+	_check(q["paint"][1] == "male_paint_red__skin5", "war paint art is picked per skin tone")
+	_check(q["weapon"][1] == "male_club", "weapons are fitted per body")
 
 
 func _test_art(sprites, scenery) -> void:
@@ -206,18 +208,23 @@ func _test_art(sprites, scenery) -> void:
 					bodies_ok = false
 	_check(bodies_ok, "male body art exists for every skin tone and hair color, in all 5 views")
 	var layers_ok := true
-	for layer in [["gear", "hide_wrap"], ["gear", "leather_armor"], ["gear", "spear"], ["gear", "bone_spear"],
-			["gear", "hide_shield"], ["gear", "bone_shield"], ["clothing", "fur_cloak"], ["clothing", "animal_hood"],
-			["clothing", "antler_skull"], ["hair", "long__blond"], ["hair", "braids__black"]]:
-		for view in ["s", "se", "e", "ne", "n"]:
-			if sprites.frames(layer[0], layer[1], view).is_empty():
-				layers_ok = false
-	_check(layers_ok, "every paper-doll layer has all 5 views")
-	var rig = load("res://scripts/data/rig_male.gd")
+	for sex in ["male", "female"]:
+		for layer in [["gear", "hide_wrap"], ["gear", "leather_armor"], ["gear", "bone_hide"], ["gear", "spear"],
+				["gear", "bone_spear"], ["gear", "club"], ["gear", "stone_axe"], ["gear", "flail"], ["gear", "sling"],
+				["gear", "hide_shield"], ["gear", "bone_shield"], ["clothing", "fur_cloak"], ["clothing", "hide_skirt"],
+				["clothing", "bone_headband"], ["clothing", "animal_hood"], ["clothing", "antler_skull"],
+				["hair", "long__blond"], ["hair", "braids__black"], ["hair", "short__grey"]]:
+			for view in ["s", "se", "e", "ne", "n"]:
+				if sprites.frames(layer[0], sex + "_" + layer[1], view).is_empty():
+					layers_ok = false
+	_check(layers_ok, "every paper-doll layer has all 5 views for both bodies")
+	_check(not sprites.frames("clothing", "male_paint_red__skin1", "s").is_empty(), "red war paint has art")
+	var rig = load("res://scripts/data/rig.gd")
 	var rig_ok: bool = rig != null
 	if rig != null:
-		for view in ["s", "se", "e", "ne", "n"]:
-			var r = rig.views().get(view)
-			if r == null or not r.has("main_hand") or float(r["hip"]) >= 0.0:
-				rig_ok = false
-	_check(rig_ok, "the leader rig has hands and hips for all 5 views")
+		for sex in ["male", "female"]:
+			for view in ["s", "se", "e", "ne", "n"]:
+				var r = rig.bodies().get(sex, {}).get(view)
+				if r == null or not r.has("main_hand") or float(r["hip"]) >= 0.0:
+					rig_ok = false
+	_check(rig_ok, "the rig has hands and hips for both bodies in all 5 views")

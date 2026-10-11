@@ -217,21 +217,12 @@ func _add_choice_row(parent: Control, label_text: String, target: Dictionary, ke
 func _art_ok(key: String, id: String) -> bool:
 	var look: Dictionary = state.leader["look"]
 	if key == "sex":
-		return FigureArt.has_body_art({"sex": id, "skin": look.get("skin", "skin3"), "hair_color": look.get("hair_color", "black")})
+		var trial := look.duplicate()
+		trial["sex"] = id
+		return FigureArt.has_body_art(trial)
 	if not FigureArt.has_body_art(look):
 		return true  # placeholder figure: everything is drawn
-	match key:
-		"hair":
-			return id != "bald" and FigureArt.piece_has_art("hair", id + "__black")
-		"headwear", "cloak":
-			return id == "none" or FigureArt.piece_has_art("clothing", id)
-		"lower":
-			return id == "loincloth"
-		"paint":
-			return id == "none"
-		"body", "main_hand", "off_hand":
-			return id in ["none_body", "fists", "none_off"] or FigureArt.piece_has_art("gear", id)
-	return true
+	return FigureArt.option_has_art(key, id, look)
 
 
 func _cycle(target: Dictionary, key: String, options: Array, direction: int) -> void:
