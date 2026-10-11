@@ -202,11 +202,11 @@ func _test_art(sprites, scenery) -> void:
 	_check(ResourceLoader.exists("res://assets/ui/title.png"), "title screen art exists")
 	var bodies_ok := true
 	for skin in ["skin1", "skin2", "skin3", "skin4", "skin5", "skin6"]:
-		for hair in ["black", "brown", "auburn", "blond", "grey"]:
+		for sex in ["male", "female"]:
 			for view in ["s", "se", "e", "ne", "n"]:
-				if sprites.frames("bodies", "body_male__%s__%s" % [skin, hair], view).is_empty():
+				if sprites.frames("bodies", "body_%s__%s" % [sex, skin], view).is_empty():
 					bodies_ok = false
-	_check(bodies_ok, "male body art exists for every skin tone and hair color, in all 5 views")
+	_check(bodies_ok, "male and female body art exists for every skin tone, in all 5 views")
 	var layers_ok := true
 	for sex in ["male", "female"]:
 		for layer in [["gear", "hide_wrap"], ["gear", "leather_armor"], ["gear", "bone_hide"], ["gear", "spear"],
