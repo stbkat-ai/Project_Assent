@@ -12,6 +12,7 @@ const SCRIPTS := [
 	"res://scripts/data/scenery_catalog.gd",
 	"res://scripts/data/rig.gd",
 	"res://scripts/data/building_catalog.gd",
+	"res://scripts/data/building_parts.gd",
 	"res://scripts/data/village_layout.gd",
 	"res://scripts/data/wildlife_catalog.gd",
 	"res://scripts/render/building_draw.gd",
@@ -268,11 +269,27 @@ func _test_village(layout, buildings) -> void:
 	_check(not layout.can_place(layout.footprint_at("hut", Vector2(10, 10)), []), "nothing can be built outside the clearing")
 	for t in buildings.types():
 		var design: Dictionary = buildings.default_design(t["id"])
-		var ok := true
+		_check(buildings.normalized(t["id"], design) == design, "default %s design uses real parts" % t["id"])
+	var old: Dictionary = buildings.normalized("hut", {"walls": "hide", "roof": "thatch", "door": "hide_flap", "decor": "none"})
+	_check(old == buildings.default_design("hut"), "a hut design from 0.7 becomes the default hut")
+	var long_hut: Dictionary = buildings.normalized("hut", {"shape": "long", "walls": "post_ring"})
+	_check(buildings.has_option("walls", "long", "hut", str(long_hut["walls"])), "switching to a longhouse picks longhouse walls")
+	_check(not buildings.has_option("roof", "round", "hut", "antler_crown"), "the Chief's decorated roofs are only for the Chief's Hut")
+	_check(buildings.has_option("roof", "round", "chief_hut", "antler_crown"), "the Chief's Hut can use them")
+	var sprites = load("res://scripts/render/sprite_library.gd")
+	var missing := PackedStringArray()
+	for shape in ["round", "long"]:
 		for slot_pair in buildings.part_slots():
-			if buildings.color_of(slot_pair[0], str(design.get(slot_pair[0], ""))) == Color.MAGENTA:
-				ok = false
-		_check(ok, "default %s design uses real parts" % t["id"])
+			var slot: String = slot_pair[0]
+			if slot == "shape":
+				continue
+			for row in buildings.options(slot, shape, "chief_hut"):
+				if row[0] == "none":
+					continue
+				var piece := "%s_%s_%s" % [buildings.art_shape(slot, shape), slot, row[0]]
+				if sprites.frames("buildings", piece, "s").is_empty():
+					missing.append(piece)
+	_check(missing.is_empty(), "every hut part has art (missing: %s)" % ", ".join(missing))
 
 
 func _test_wildlife(wildlife) -> void:

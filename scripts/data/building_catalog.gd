@@ -4,7 +4,18 @@ extends RefCounted
 ## the building type sets what it does (the Chief's Hut is the HQ, each Hut
 ## houses a family of four = four soldiers you can field).
 ##
+## A design picks a shape (round hut or longhouse), then a part for each slot.
+## The parts come from Luke's ChatGPT hut sheets (building_parts.gd, generated
+## by tools/huts/build.py). Walls, roof, doorway and crest belong to a shape;
+## hanging decorations and yard props fit both.
+##
 ## Footprints are in cells of the settlement's invisible grid (village_layout.gd).
+
+const BuildingParts = preload("res://scripts/data/building_parts.gd")
+
+## Slots that may be left empty.
+const OPTIONAL_SLOTS := ["hang", "crest", "yard"]
+
 
 static func types() -> Array:
 	return [
@@ -22,46 +33,71 @@ static func get_type(id: String) -> Dictionary:
 	return {}
 
 
+static func shapes() -> Array:
+	return [["round", "Round hut"], ["long", "Longhouse"]]
+
+
 ## Design slots, in the order the designer shows them.
 static func part_slots() -> Array:
-	return [["walls", "Walls"], ["roof", "Roof"], ["door", "Doorway"], ["decor", "Decoration"]]
+	return [["shape", "Shape"], ["walls", "Walls"], ["roof", "Roof"], ["door", "Doorway"],
+		["crest", "Roof crest"], ["hang", "Hanging"], ["yard", "Yard"]]
 
 
-## [id, name, color] options for a part slot.
-static func options(slot: String) -> Array:
-	match slot:
-		"walls":
-			return [["hide", "Stretched hide", Color(0.66, 0.53, 0.37)], ["wattle", "Woven wattle", Color(0.50, 0.38, 0.24)],
-				["log", "Split logs", Color(0.40, 0.27, 0.16)], ["stone", "Piled stone", Color(0.52, 0.51, 0.48)]]
-		"roof":
-			return [["thatch", "Grass thatch", Color(0.78, 0.66, 0.36)], ["hide", "Hide cover", Color(0.71, 0.60, 0.45)],
-				["bark", "Bark shingles", Color(0.36, 0.26, 0.18)], ["fur", "Fur pelts", Color(0.48, 0.38, 0.28)]]
-		"door":
-			return [["hide_flap", "Hide flap", Color(0.55, 0.40, 0.25)], ["open", "Open arch", Color(0.12, 0.09, 0.07)],
-				["bone_arch", "Bone arch", Color(0.90, 0.86, 0.75)], ["log_frame", "Log frame", Color(0.33, 0.22, 0.13)]]
-		"decor":
-			return [["none", "None", Color.WHITE], ["skulls", "Animal skulls", Color(0.92, 0.89, 0.80)],
-				["antlers", "Antlers", Color(0.85, 0.78, 0.62)], ["totem", "Totem pole", Color(0.70, 0.30, 0.20)],
-				["hides", "Drying hides", Color(0.74, 0.62, 0.45)]]
-	return []
+## Which art set a slot uses: walls, roof, door and crest are per shape; the rest fit any shape.
+static func art_shape(slot: String, shape: String) -> String:
+	return "any" if slot == "hang" or slot == "yard" else shape
 
 
-static func color_of(slot: String, id: String) -> Color:
-	for row in options(slot):
-		if row[0] == id:
-			return row[2]
-	return Color.MAGENTA
-
-
-## [id, name] pairs, the format the designer's choice rows use.
-static func option_pairs(slot: String) -> Array:
+## [id, name] options for a slot of a building with this shape. The Chief's
+## decorated roofs are only offered for the Chief's Hut.
+static func options(slot: String, shape: String, type_id: String) -> Array:
+	if slot == "shape":
+		return shapes()
 	var out: Array = []
-	for row in options(slot):
-		out.append([row[0], row[1]])
+	if OPTIONAL_SLOTS.has(slot):
+		out.append(["none", "None"])
+	var all: Dictionary = BuildingParts.options()
+	var key := "%s/%s" % [art_shape(slot, shape), slot]
+	for row in all.get(key, []):
+		if bool(row[2]) and type_id != "chief_hut":
+			continue
+		out.append([str(row[0]), str(row[1])])
 	return out
+
+
+static func has_option(slot: String, shape: String, type_id: String, id: String) -> bool:
+	for row in options(slot, shape, type_id):
+		if row[0] == id:
+			return true
+	return false
 
 
 static func default_design(type_id: String) -> Dictionary:
 	if type_id == "chief_hut":
-		return {"walls": "log", "roof": "fur", "door": "bone_arch", "decor": "totem"}
-	return {"walls": "hide", "roof": "thatch", "door": "hide_flap", "decor": "none"}
+		return {"shape": "round", "walls": "painted_palisade", "roof": "antler_crown", "door": "antler_skull",
+			"crest": "none", "hang": "blue_banner", "yard": "fire_pit"}
+	return {"shape": "round", "walls": "post_ring", "roof": "thick_thatch", "door": "hide_flap",
+		"crest": "pole_bundle", "hang": "none", "yard": "none"}
+
+
+## A copy of `design` with every slot valid for its shape (old saves, or after
+## the shape changes): unknown parts fall back to the default, then the first option.
+static func normalized(type_id: String, design: Dictionary) -> Dictionary:
+	var fallback := default_design(type_id)
+	var out := {}
+	var shape := str(design.get("shape", ""))
+	if not has_option("shape", "", type_id, shape):
+		shape = str(fallback["shape"])
+	out["shape"] = shape
+	for slot_pair in part_slots():
+		var slot: String = slot_pair[0]
+		if slot == "shape":
+			continue
+		var id := str(design.get(slot, ""))
+		if not has_option(slot, shape, type_id, id):
+			id = str(fallback.get(slot, ""))
+			if not has_option(slot, shape, type_id, id):
+				var opts := options(slot, shape, type_id)
+				id = str(opts[0][0]) if not opts.is_empty() else "none"
+		out[slot] = id
+	return out

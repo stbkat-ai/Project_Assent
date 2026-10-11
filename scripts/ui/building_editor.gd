@@ -16,8 +16,9 @@ class Preview extends Control:
 
 	func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.42, 0.50, 0.27))
-		var width := minf(size.x * 0.62, size.y * 0.75)
-		BuildingDraw.draw_building(self, type_id, design, Vector2(size.x * 0.48, size.y * 0.78), width)
+		# The building rises about 1.5 x its footprint width above the ground point.
+		var width := minf(size.x * 0.5, size.y * 0.45)
+		BuildingDraw.draw_building(self, type_id, design, Vector2(size.x * 0.45, size.y * 0.8), width)
 
 
 var state: GameState
@@ -32,7 +33,8 @@ func setup(game_state: GameState, building_type: String) -> void:
 	type_id = building_type
 	if not state.building_designs.has(type_id):
 		state.building_designs[type_id] = BuildingCatalog.default_design(type_id)
-	_design = state.building_designs[type_id]
+	_design = BuildingCatalog.normalized(type_id, state.building_designs[type_id])
+	state.building_designs[type_id] = _design
 
 
 func _ready() -> void:
@@ -65,13 +67,17 @@ func _ready() -> void:
 	_preview.custom_minimum_size = Vector2(240, 200)
 	main.add_child(_preview)
 
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	main.add_child(scroll)
 	var list := VBoxContainer.new()
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 8)
-	main.add_child(list)
+	list.add_theme_constant_override("separation", 6)
+	scroll.add_child(list)
 	list.add_child(UiStyle.label("Parts (cosmetic: every %s you build will look like this)" % str(info.get("name", "")).to_lower(), 18, UiStyle.MUTED))
 	for slot_pair in BuildingCatalog.part_slots():
-		_add_choice_row(list, str(slot_pair[1]), str(slot_pair[0]), BuildingCatalog.option_pairs(str(slot_pair[0])))
+		_add_choice_row(list, str(slot_pair[1]), str(slot_pair[0]))
 
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 12)
@@ -92,7 +98,12 @@ func _ready() -> void:
 	_changed()
 
 
-func _add_choice_row(parent: Control, label_text: String, key: String, options: Array) -> void:
+## The options for a slot depend on the chosen shape, so they are looked up each time.
+func _options(key: String) -> Array:
+	return BuildingCatalog.options(key, str(_design.get("shape", "round")), type_id)
+
+
+func _add_choice_row(parent: Control, label_text: String, key: String) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	var lab := UiStyle.label(label_text, 20)
@@ -111,15 +122,15 @@ func _add_choice_row(parent: Control, label_text: String, key: String, options: 
 	var refresh := func() -> void:
 		var id := str(_design.get(key, ""))
 		value.text = "?"
-		for option in options:
+		for option in _options(key):
 			if str(option[0]) == id:
 				value.text = str(option[1])
 	_refreshers.append(refresh)
 	prev.pressed.connect(func() -> void:
-		_cycle(key, options, -1)
+		_cycle(key, _options(key), -1)
 		_changed())
 	next.pressed.connect(func() -> void:
-		_cycle(key, options, 1)
+		_cycle(key, _options(key), 1)
 		_changed())
 
 
@@ -129,6 +140,10 @@ func _cycle(key: String, options: Array, direction: int) -> void:
 		if str(options[i][0]) == str(_design.get(key, "")):
 			index = i
 	_design[key] = str(options[posmod(index + direction, options.size())][0])
+	# A new shape has its own walls, roofs, doorways and crests.
+	var fixed := BuildingCatalog.normalized(type_id, _design)
+	for k in fixed:
+		_design[k] = fixed[k]
 
 
 func _changed() -> void:

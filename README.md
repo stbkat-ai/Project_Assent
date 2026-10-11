@@ -9,13 +9,13 @@ Stone Age to the space age. Built in **Godot 4** (GDScript), 2D pixel art, lands
 
 Both links rebuild automatically about 5 minutes after every push to `main`.
 
-## What's playable now (v0.8.0)
+## What's playable now (v0.9.0)
 
 | Prototype | Opening phase | What you can do |
 | --- | --- | --- |
 | **A. The leader** | 1. The first hero | Design your tribal leader: body, skin, hair, Shaman/Caveman clothing pieces, war paint, tribe color, and gear (armor, weapon, shield). Gear sets the stats; looks are cosmetic. |
 | **B. The wilderness** | 2. Into the wilderness | Walk your leader across a wild map, fight wolves, boars, a bear and hostile cavemen, hunt deer and small game for points, and claim the clearing for your village. Your **score** sets how many Huts the village can raise at first. |
-| **C. The village** | 3. Found the village | Design the **Chief's Hut** and the **Hut** (walls, roof, doorway, decoration), then place them freely in the clearing. Buildings can't overlap (an invisible grid keeps them tidy). Each Hut houses a family of four: **4 soldiers you can field**. |
+| **C. The village** | 3. Found the village | Design the **Chief's Hut** and the **Hut** (round hut or longhouse; walls, roof, doorway, roof crest, hanging decoration, yard prop), then place them freely in the clearing. Buildings can't overlap (an invisible grid keeps them tidy). Each Hut houses a family of four: **4 soldiers you can field**. |
 
 Battles use a **3/4 top-down view like the original StarCraft**, and units face **8 directions** (5 drawn,
 3 mirrored). The leader editor's **Turn** and **Walk** buttons preview every direction.
@@ -43,6 +43,12 @@ Remaining placeholders are pixel art drawn in code. Every clothing and gear piec
 real sprites replace placeholders **one piece at a time** as they're added: see
 [`assets/README.md`](assets/README.md) for the folder layout, naming and the sheet-slicing tools.
 
+**Hut art (0.9.0):** buildings are drawn from Luke's two ChatGPT hut sheets. A design picks a
+**shape** (round hut or longhouse) and then 6 parts: 12 walls and 10 roofs per shape, 6 doorways and 13
+roof crests per shape, 17 hanging decorations and 18 yard props (fire pit, rune stone, spear racks...).
+The 5 decorated chieftain roofs per shape are only for the Chief's Hut. Designs from 0.7–0.8 reset to the
+new defaults.
+
 **Wildlife and score (0.8.0):** the wilderness is full of animals from the ChatGPT animal sheet, each
 with its own temper:
 
@@ -66,7 +72,7 @@ your leader falls starts the score over.
 design the Chief's Hut and then the Hut, the same way as the leader. In the village, tap **Build Hut**,
 tap a spot to preview it (green = fits, red = blocked), and tap the same spot again to build. Tap a
 building to move or remove it (the Chief's Hut can be moved but not removed). Both designs can be changed
-any time. Buildings are code-drawn placeholders until ChatGPT building art arrives. Load Game returns you to
+any time. Load Game returns you to
 your village once the clearing is claimed.
 
 ### Controls

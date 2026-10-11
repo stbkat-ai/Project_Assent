@@ -33,7 +33,7 @@ Animations so far: `walk`. Attacks and hits are code-driven motion for now.
 | `gear` | `hide_wrap`, `leather_armor`, `bone_hide`, `club`, `spear`, `stone_axe`, `flail`, `sling`, `hide_shield`, `bone_shield` | Weapons in the right hand, shields on the left arm, as worn. |
 | `beasts` | `wolf_gray`, `wolf_brown`, `boar`, `bear`, `deer_doe`, `deer_stag`, `fox`, `rabbit`, `squirrel`, `turkey` (ids in `scripts/data/wildlife_catalog.gd`) | One whole animal per view. `e_death_0.png` = the body left behind (the small animals have none yet). |
 | `units` | `caveman_spear` | Whole-character sprites for units that aren't customized (enemies, NPCs). |
-| `buildings` | `<type>_<slot>_<option>`, e.g. `hut_walls_hide`, `chief_hut_roof_fur` (ids in `scripts/data/building_catalog.gd`) | Only the `s` view. Each part (walls, roof, door, decor) is its own layer, drawn on a shared canvas with the **footprint center at the bottom center**. |
+| `buildings` | `<shape>_<slot>_<id>`, e.g. `round_walls_log_ring`, `long_roof_hide_gable`, `any_yard_fire_pit` (ids in the generated `scripts/data/building_parts.gd`) | Only the `s` view. Built by `tools/huts/build.py` from `assets/source/sheet_huts_1.png` and `sheet_huts_2.png`: every part sits on one shared 120 x 150 canvas, so the layers stack. To add parts, extend `PARTS` in the tool and re-run it; `tools/huts/preview.py` renders sample huts. |
 | `scenery` | see `scripts/data/scenery_catalog.gd` (oaks, pines, birches, bushes, rocks, grass, ferns, flowers, mushrooms, stumps, log) | Only the `s` view is used; maps mirror them at random. |
 
 The title screen art is `assets/ui/title.png` (its painted buttons are tap zones, see
