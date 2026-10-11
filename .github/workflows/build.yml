@@ -1,0 +1,79 @@
+name: Test and build
+
+# Every push to main: run the logic tests, export the web build and the
+# Android APK, and publish both to GitHub Pages.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: "4.3"
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . -s res://tests/run_tests.gd 2>&1 | tee test.log
+          if grep -Eq "SCRIPT ERROR|Parse Error|Failed to load script|Compile Error" test.log; then
+            echo "::error::GDScript errors found"; exit 1
+          fi
+
+  build:
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-22.04
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up export templates and Android settings
+        run: |
+          mkdir -v -p ~/.local/share/godot/export_templates/ ~/.config/
+          mv /root/.config/godot ~/.config/godot
+          mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+      - name: Import project
+        run: timeout 300 godot --headless --editor --quit || true
+      - name: Export web build
+        run: |
+          mkdir -v -p build/web
+          godot --headless --export-release "Web" build/web/index.html
+          test -f build/web/index.html
+      - name: Export Android APK (debug-signed)
+        continue-on-error: true
+        run: |
+          mkdir -v -p build/android
+          godot --headless --export-debug "Android" build/android/project-ascent.apk
+          cp build/android/project-ascent.apk build/web/project-ascent.apk
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

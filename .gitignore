@@ -1,0 +1,10 @@
+# Godot
+.godot/
+.import/
+export_credentials.cfg
+*.translation
+
+# Build output
+build/
+*.apk
+*.aab
