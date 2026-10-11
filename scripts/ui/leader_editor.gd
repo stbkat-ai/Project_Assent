@@ -21,10 +21,11 @@ class Preview extends Control:
 	var gear: Dictionary = {}
 	var dir := Directions.SE
 	var walking := false
+	var attacking := false
 	var _t := 0.0
 
 	func _process(delta: float) -> void:
-		if walking:
+		if walking or attacking:
 			_t += delta
 			queue_redraw()
 
@@ -32,7 +33,10 @@ class Preview extends Control:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.20, 0.27, 0.15))
 		var px := 2.4 * minf(size.x / 72.0, size.y / 58.0)
 		var origin := Vector2(size.x / 2.0, size.y * 0.92)
-		Figure.draw_human(self, origin, px, look, gear, dir, _t if walking else 0.0, 0.0)
+		var swing := 0.0
+		if attacking:
+			swing = maxf(0.0, 0.25 - fmod(_t, 0.8))
+		Figure.draw_human(self, origin, px, look, gear, dir, _t if walking else 0.0, swing)
 
 
 var state: GameState
@@ -85,18 +89,24 @@ func _ready() -> void:
 	var turn_row := HBoxContainer.new()
 	turn_row.add_theme_constant_override("separation", 8)
 	left.add_child(turn_row)
-	var turn_left := UiStyle.button("< Turn", 110)
+	var turn_left := UiStyle.button("<", 56)
 	turn_left.pressed.connect(func() -> void:
 		_preview.dir = posmod(_preview.dir - 1, 8)
 		_preview.queue_redraw())
 	turn_row.add_child(turn_left)
-	var walk := UiStyle.button("Walk", 90)
+	var walk := UiStyle.button("Walk", 80)
 	walk.toggle_mode = true
 	walk.toggled.connect(func(on: bool) -> void:
 		_preview.walking = on
 		_preview.queue_redraw())
 	turn_row.add_child(walk)
-	var turn_right := UiStyle.button("Turn >", 110)
+	var attack := UiStyle.button("Attack", 100)
+	attack.toggle_mode = true
+	attack.toggled.connect(func(on: bool) -> void:
+		_preview.attacking = on
+		_preview.queue_redraw())
+	turn_row.add_child(attack)
+	var turn_right := UiStyle.button(">", 56)
 	turn_right.pressed.connect(func() -> void:
 		_preview.dir = posmod(_preview.dir + 1, 8)
 		_preview.queue_redraw())

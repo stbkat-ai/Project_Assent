@@ -93,3 +93,9 @@ bottom center, and shrinks them 3x to true pixels.
 Regenerate everything with `python3 tools/paper_doll/gen.py`. When a body has art, layers without art are
 left out (code-drawn pieces don't line up with painted bodies); the leader editor marks them with `*`.
 A **female** body sheet in the same format is still needed.
+
+**Animation is done in code** (no walk/attack frames needed yet): `gen.py` also writes
+`scripts/data/rig_male.gd` with each view's hand and hip positions. Walking splits the body below the hip
+into two halves that lift in turn while the upper body bobs; attacking leans the body forward and thrusts
+the weapon out from the hand. Whole-body sprites (wolves, cavemen) get the same leg trick. Real animation
+frames (`<view>_walk_<n>.png`) can replace this later.

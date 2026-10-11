@@ -10,6 +10,7 @@ const SCRIPTS := [
 	"res://scripts/data/appearance_catalog.gd",
 	"res://scripts/data/unit_stats.gd",
 	"res://scripts/data/scenery_catalog.gd",
+	"res://scripts/data/rig_male.gd",
 	"res://scripts/render/directions.gd",
 	"res://scripts/render/sprite_library.gd",
 	"res://scripts/render/figure.gd",
@@ -191,3 +192,11 @@ func _test_art(sprites, scenery) -> void:
 			if sprites.frames(layer[0], layer[1], view).is_empty():
 				layers_ok = false
 	_check(layers_ok, "every paper-doll layer has all 5 views")
+	var rig = load("res://scripts/data/rig_male.gd")
+	var rig_ok: bool = rig != null
+	if rig != null:
+		for view in ["s", "se", "e", "ne", "n"]:
+			var r = rig.views().get(view)
+			if r == null or not r.has("main_hand") or float(r["hip"]) >= 0.0:
+				rig_ok = false
+	_check(rig_ok, "the leader rig has hands and hips for all 5 views")

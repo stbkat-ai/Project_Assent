@@ -13,6 +13,12 @@ extends RefCounted
 const AppearanceCatalog = preload("res://scripts/data/appearance_catalog.gd")
 const Directions = preload("res://scripts/render/directions.gd")
 const SpriteLibrary = preload("res://scripts/render/sprite_library.gd")
+const RigMale = preload("res://scripts/data/rig_male.gd")
+
+## The direction a figure faces, in each drawn view's own art space (used to
+## lean and thrust forward when attacking).
+const FORWARD := {"s": Vector2(0, 0.6), "se": Vector2(0.8, 0.4), "e": Vector2(1, 0), "ne": Vector2(0.8, -0.4), "n": Vector2(0, -0.6)}
+const WALK_SPEED := 10.0  # walk-cycle radians per second
 
 const GRID_W := 12.0
 const GRID_H := 18.0
@@ -124,17 +130,7 @@ static func draw_human(ci: CanvasItem, origin: Vector2, px: float, look: Diction
 	var layer_pieces := pieces(look, gear)
 	var back := Directions.is_back_view(c.view)
 	if has_body_art(look):
-		var anim := "walk" if walk_t > 0.0 else ""
-		var o := c.o
-		if swing_t > 0.0:
-			o += Vector2.from_angle(dir * PI / 4.0) * px * (1.5 if swing_t < 0.13 else 0.7)
-		for layer in (ART_BACK_ORDER if back else ART_FRONT_ORDER):
-			var piece: Array = layer_pieces[layer]
-			if str(piece[1]) == "":
-				continue
-			var tex = SpriteLibrary.frame_at(str(piece[0]), str(piece[1]), c.view, anim, walk_t)
-			if tex != null:
-				SpriteLibrary.draw(ci, tex, o, px / REF_PX * SpriteLibrary.SPRITE_SCALE, c.mirrored)
+		_draw_art_layers(ci, origin, px, c.view, c.mirrored, back, layer_pieces, walk_t, swing_t)
 		return
 	for layer in (BACK_ORDER if back else FRONT_ORDER):
 		var piece: Array = layer_pieces[layer]
@@ -144,6 +140,39 @@ static func draw_human(ci: CanvasItem, origin: Vector2, px: float, look: Diction
 		if layer == "hair":
 			id = id.get_slice("__", 0)
 		_placeholder(c, str(layer), id, look)
+
+
+## The art version of a person, animated in code from its layers:
+## walking lifts the legs in turn and bobs the upper body; attacking leans the
+## body forward and thrusts the weapon out from the hand.
+static func _draw_art_layers(ci: CanvasItem, origin: Vector2, px: float, view: String, mirrored: bool, back: bool,
+		layer_pieces: Dictionary, walk_t: float, swing_t: float) -> void:
+	var s := px / REF_PX * SpriteLibrary.SPRITE_SCALE
+	var rig: Dictionary = RigMale.VIEWS.get(view, {})
+	var hip := -float(rig.get("hip", -13.0))
+	var hand: Vector2 = rig.get("main_hand", Vector2(8, -16))
+	var walking := walk_t > 0.0
+	var phase := walk_t * WALK_SPEED if walking else 0.0
+	var up := Vector2(0, -SpriteLibrary.walk_bob(phase)) if walking else Vector2.ZERO
+	var strike := 0.0
+	if swing_t > 0.0:
+		strike = sin(PI * clampf(1.0 - swing_t / 0.25, 0.0, 1.0))
+	var fwd: Vector2 = FORWARD.get(view, Vector2(1, 0))
+	var lean := fwd * 1.2 * strike
+	for layer in (ART_BACK_ORDER if back else ART_FRONT_ORDER):
+		var piece: Array = layer_pieces[layer]
+		if str(piece[1]) == "":
+			continue
+		var tex = SpriteLibrary.frame_at(str(piece[0]), str(piece[1]), view, "", 0.0)
+		if tex == null:
+			continue
+		match str(layer):
+			"body":
+				SpriteLibrary.draw_walking(ci, tex, origin, s, mirrored, hip, phase, up + lean)
+			"weapon":
+				SpriteLibrary.draw_rotated(ci, tex, origin, s, mirrored, hand, -0.35 * strike, up + lean + fwd * 5.0 * strike)
+			_:
+				SpriteLibrary.draw_region(ci, tex, origin, s, mirrored, Rect2(Vector2.ZERO, tex.get_size()), up + lean)
 
 
 static func _placeholder(c: Ctx, layer: String, piece: String, look: Dictionary) -> void:
@@ -395,12 +424,15 @@ static func draw_whole(ci: CanvasItem, origin: Vector2, px: float, category: Str
 	if tex == null:
 		return false
 	var o := origin
-	if walk_t > 0.0 and int(walk_t * 8.0) % 2 == 1:
-		o.y -= px * 0.6
 	if swing_t > 0.0:
-		o += Vector2.from_angle(dir * PI / 4.0) * px * (2.5 if swing_t < 0.13 else 1.2)
+		o += Vector2.from_angle(dir * PI / 4.0) * px * 2.0 * sin(PI * clampf(1.0 - swing_t / 0.25, 0.0, 1.0))
 	_shadow(ci, origin, px, 10.0)
-	SpriteLibrary.draw(ci, tex, o, px / REF_PX * SpriteLibrary.SPRITE_SCALE, Directions.is_mirrored(dir))
+	var s := px / REF_PX * SpriteLibrary.SPRITE_SCALE
+	var phase := walk_t * WALK_SPEED
+	var up := Vector2(0, -SpriteLibrary.walk_bob(phase)) if walk_t > 0.0 else Vector2.ZERO
+	# Legs: roughly the bottom third of a whole-body sprite.
+	SpriteLibrary.draw_walking(ci, tex, o, s, Directions.is_mirrored(dir), tex.get_size().y * 0.32,
+		phase if walk_t > 0.0 else 0.0, up)
 	return true
 
 
