@@ -11,6 +11,7 @@ const SCRIPTS := [
 	"res://scripts/data/unit_stats.gd",
 	"res://scripts/data/scenery_catalog.gd",
 	"res://scripts/data/rig.gd",
+	"res://scripts/data/walk_rig.gd",
 	"res://scripts/data/building_catalog.gd",
 	"res://scripts/data/building_parts.gd",
 	"res://scripts/data/village_layout.gd",
@@ -225,6 +226,22 @@ func _test_art(sprites, scenery) -> void:
 					animals_ok = false
 					animals_missing.append("%s/%s" % [piece, view])
 	_check(animals_ok, "every wilderness animal has all 5 views (missing: %s)" % ", ".join(animals_missing))
+	var legs_ok := true
+	for sex in ["male", "female"]:
+		for skin in ["skin1", "skin2", "skin3", "skin4", "skin5", "skin6"]:
+			for view in ["s", "se", "e", "ne", "n"]:
+				if sprites.frames("bodies", "legs_%s__%s" % [sex, skin], view, "walk").size() != 4:
+					legs_ok = false
+	_check(legs_ok, "4 walk-cycle leg frames for every body, skin tone and view")
+	var fig = load("res://scripts/render/figure.gd")
+	var rest_ok := true
+	for kind in ["thrust", "swing", "shoot"]:
+		for v in fig.attack_pose(kind, 0.0) + fig.attack_pose(kind, 1.0):
+			if absf(float(v)) > 0.001:
+				rest_ok = false
+	_check(rest_ok, "attacks start and end at rest")
+	_check(float(fig.attack_pose("swing", 0.35)[0]) < -1.0, "a club or axe is raised back before the strike")
+	_check(float(fig.attack_pose("thrust", 0.55)[1]) > 4.0, "a spear is pushed forward in the thrust")
 	_check(ResourceLoader.exists("res://assets/ui/title.png"), "title screen art exists")
 	var bodies_ok := true
 	for skin in ["skin1", "skin2", "skin3", "skin4", "skin5", "skin6"]:

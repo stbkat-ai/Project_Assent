@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+"""Build the leader's walk-cycle legs from Luke's animation template sheet.
+
+    python3 tools/anim/build_walk.py      (after tools/paper_doll/build.py)
+
+The template (assets/source/sheet_anim_template.png) is a faceless mannequin
+walking in 5 views. The leader keeps its own body art from the waist up (face,
+loincloth and every worn layer); only the bare legs below the loincloth are
+swapped for the template's 4 walk frames, fitted to the body's height and
+recolored to each skin tone.
+
+Output: assets/sprites/bodies/legs_<sex>__<skin>/<view>_walk_<n>.png on the
+body's own canvas, and scripts/data/walk_rig.gd (where the legs start, and
+which frame is the widest stride, used for the lunge of an attack).
+"""
+import os
+import sys
+
+import numpy as np
+from PIL import Image
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
+sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.join(ROOT, "tools", "paper_doll"))
+from template import frame, VIEWS  # noqa: E402
+from build import SKINS, hsv, recolor, skin_mask  # noqa: E402
+
+SPRITES = os.path.join(ROOT, "assets", "sprites", "bodies")
+# ChatGPT's "UP-RIGHT" column faces down-right, so walking away up-right uses the back view's legs.
+SOURCE_VIEW = {"s": "s", "se": "se", "e": "e", "ne": "n", "n": "n"}
+MAX_LEG = 0.33  # never take more than this share of the height as legs (keeps the template's hands out)
+FRAMES = 4
+
+
+def legs_height(body):
+    """Art pixels from the feet up to just under the loincloth, where bare legs start."""
+    _, sat, v = hsv(body)
+    a = body[..., 3] > 0
+    # Loincloths are pale, washed-out cloth; shaded skin is dark but still saturated.
+    cloth = a & (sat < 0.3) & (v > 0.3)
+    h, w = body.shape[:2]
+    box = Image.fromarray(body).getbbox()
+    bh = box[3] - box[1]
+    rows = [y for y in range(h) if cloth[y, w // 2 - 6:w // 2 + 6].sum() >= 2 and h - 0.6 * bh < y < h - 0.12 * bh]
+    legs = h - max(rows) - 1 if rows else int(bh * MAX_LEG)
+    return min(legs, int(bh * MAX_LEG))
+
+
+def legs_frame(sex, view, n, body, legs_h, color):
+    box = Image.fromarray(body).getbbox()
+    bh = box[3] - box[1]
+    t = frame(sex, SOURCE_VIEW[view], n)
+    tbox = Image.fromarray(t).getbbox()
+    th = tbox[3] - tbox[1]
+    s = bh / th
+    im = Image.fromarray(t).resize((max(1, round(t.shape[1] * s)), max(1, round(t.shape[0] * s))), Image.NEAREST)
+    ta = np.asarray(im).copy()
+    _, _, v = hsv(ta)
+    mask = (ta[..., 3] > 0) & (v > 0.2)
+    if mask.any():
+        # Shade relative to the template's typical skin, clamped so the far (shadowed) leg
+        # and highlights stay within a believable range of the target tone.
+        ratio = np.clip(v / np.median(v[mask]), 0.55, 1.12)
+        out = ta.astype(float)
+        for ch in range(3):
+            out[..., ch][mask] = out[..., ch][mask] * 0.15 + np.clip(color[ch] * 255 * ratio[mask], 0, 255) * 0.85
+        ta = out.astype(np.uint8)
+    cut = int(round(tbox[3] * s - legs_h))
+    leg = ta[cut:]
+    h, w = body.shape[:2]
+    out = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    body_cx = (box[0] + box[2]) / 2
+    x = int(round(body_cx - ta.shape[1] / 2))
+    out.alpha_composite(Image.fromarray(leg).crop((max(0, -x), 0, leg.shape[1], leg.shape[0])), (max(0, x), h - leg.shape[0]))
+    out = np.asarray(out).copy()
+    if view != "e":
+        # Only the side view strides wider than the body; elsewhere anything beyond
+        # the body's own legs is the template's hands hanging at the hips.
+        cols = np.nonzero(body[h - int(legs_h):, :, 3].any(axis=0))[0]
+        if len(cols):
+            out[:, :max(0, cols.min() - 1)] = 0
+            out[:, cols.max() + 2:] = 0
+    return out
+
+
+def stride(legs):
+    """The width of the legs in a frame (the widest is the lunge)."""
+    xs = np.nonzero(legs[..., 3].any(axis=0))[0]
+    return xs.max() - xs.min() if len(xs) else 0
+
+
+def main():
+    rig = {}
+    for sex in ("male", "female"):
+        rig[sex] = {}
+        for view in VIEWS:
+            base = np.asarray(Image.open(os.path.join(SPRITES, "body_%s__skin3" % sex, view + ".png")))
+            legs_h = legs_height(base)
+            widths = []
+            for skin, color in SKINS.items():
+                body = np.asarray(Image.open(os.path.join(SPRITES, "body_%s__%s" % (sex, skin), view + ".png")))
+                folder = os.path.join(SPRITES, "legs_%s__%s" % (sex, skin))
+                os.makedirs(folder, exist_ok=True)
+                for n in range(FRAMES):
+                    legs = legs_frame(sex, view, n + 1, body, legs_h, color)
+                    Image.fromarray(legs).save(os.path.join(folder, "%s_walk_%d.png" % (view, n)))
+                    if skin == "skin3":
+                        widths.append(stride(legs))
+            rig[sex][view] = (legs_h, int(np.argmax(widths)))
+    lines = [
+        "extends RefCounted",
+        "## Generated by tools/anim/build_walk.py - do not edit by hand.",
+        "## Per sex and view: legs = art pixels from the feet up to where the walk-cycle legs",
+        "## (bodies/legs_<sex>__<skin>/<view>_walk_<n>.png) replace the body's own legs;",
+        "## lunge = the walk frame with the widest stride, used while striking.",
+        "",
+        "const LEGS := {",
+    ]
+    for sex, views in rig.items():
+        lines.append('\t"%s": {' % sex)
+        for view, (legs_h, lunge) in views.items():
+            lines.append('\t\t"%s": {"legs": %d.0, "lunge": %d},' % (view, legs_h, lunge))
+        lines.append("\t},")
+    lines += ["}", "", "", "static func legs() -> Dictionary:", "\treturn LEGS", ""]
+    with open(os.path.join(ROOT, "scripts", "data", "walk_rig.gd"), "w") as f:
+        f.write("\n".join(lines))
+    print("built walk legs for", ", ".join(rig))
+
+
+if __name__ == "__main__":
+    main()

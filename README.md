@@ -9,7 +9,7 @@ Stone Age to the space age. Built in **Godot 4** (GDScript), 2D pixel art, lands
 
 Both links rebuild automatically about 5 minutes after every push to `main`.
 
-## What's playable now (v0.9.0)
+## What's playable now (v0.10.0)
 
 | Prototype | Opening phase | What you can do |
 | --- | --- | --- |
@@ -42,6 +42,13 @@ leader is still the code-drawn placeholder.
 Remaining placeholders are pixel art drawn in code. Every clothing and gear piece is its own layer, and
 real sprites replace placeholders **one piece at a time** as they're added: see
 [`assets/README.md`](assets/README.md) for the folder layout, naming and the sheet-slicing tools.
+
+**Walk and attack animation (0.10.0):** Luke's animation template sheet (a faceless mannequin walking
+in 5 views, plus spear, club and axe attacks) now drives the leader. Walking swaps the body's legs below the
+loincloth for the template's 4-frame walk cycle, fitted and recolored for every body and skin tone (the face,
+loincloth and all worn layers stay). Attacks follow the template's poses as timed keyframes: spears draw back
+and lunge level; clubs and axes are raised back overhead, then swung down and forward with a follow-through;
+the legs take the widest stride during the strike.
 
 **Hut art (0.9.0):** buildings are drawn from Luke's two ChatGPT hut sheets. A design picks a
 **shape** (round hut or longhouse) and then 6 parts: 12 walls and 10 roofs per shape, 6 doorways and 13

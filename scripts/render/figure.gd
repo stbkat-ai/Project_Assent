@@ -15,6 +15,26 @@ const Directions = preload("res://scripts/render/directions.gd")
 const SpriteLibrary = preload("res://scripts/render/sprite_library.gd")
 const Rig = preload("res://scripts/data/rig.gd")
 const GearCatalog = preload("res://scripts/data/gear_catalog.gd")
+const WalkRig = preload("res://scripts/data/walk_rig.gd")
+
+## How long an attack takes to play, in seconds.
+const ATTACK_TIME := 0.45
+## Attack keyframes, timed from the poses in Luke's animation template sheet:
+## [time 0-1, weapon turn (radians, + = forward/down), weapon push forward,
+## body lean forward, crouch] (pushes and leans in art pixels).
+const ATTACK_POSES := {
+	# Spear: draw back low, lunge with the spear level, recover.
+	"thrust": [[0.0, 0.0, 0.0, 0.0, 0.0], [0.3, -0.3, -2.0, -0.5, 1.0], [0.55, 0.4, 6.0, 2.0, 0.0],
+		[0.8, 0.3, 4.0, 1.5, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0]],
+	# Club and axe: raise it back overhead, crouch, swing down and forward, follow through.
+	"swing": [[0.0, 0.0, 0.0, 0.0, 0.0], [0.35, -1.4, -1.0, -0.8, 1.0], [0.6, 0.55, 3.0, 2.5, 0.5],
+		[0.8, 0.75, 2.0, 1.5, 0.5], [1.0, 0.0, 0.0, 0.0, 0.0]],
+	# Sling and bow: pull back and release.
+	"shoot": [[0.0, 0.0, 0.0, 0.0, 0.0], [0.4, 0.0, -2.0, 0.0, 0.0], [0.6, 0.0, -2.5, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0]],
+}
+## Share of the attack spent in the lunge stance (widest walk stride).
+const LUNGE_FROM := 0.45
+const LUNGE_TO := 0.85
 
 ## The direction a figure faces, in each drawn view's own art space (used to
 ## lean and thrust forward when attacking).
@@ -202,26 +222,29 @@ static func _draw_art_layers(ci: CanvasItem, origin: Vector2, px: float, view: S
 	var walking := walk_t > 0.0
 	var phase := walk_t * WALK_SPEED if walking else 0.0
 	var up := Vector2(0, -SpriteLibrary.walk_bob(phase)) if walking else Vector2.ZERO
-	var t := clampf(1.0 - swing_t / 0.25, 0.0, 1.0) if swing_t > 0.0 else 0.0
-	var strike := sin(PI * t) if swing_t > 0.0 else 0.0
+	var attacking := swing_t > 0.0
+	var t := clampf(1.0 - swing_t / ATTACK_TIME, 0.0, 1.0) if attacking else 0.0
 	var fwd: Vector2 = FORWARD.get(view, Vector2(1, 0))
-	var lean := fwd * 1.2 * strike
-	# How the weapon moves for this kind of attack.
-	var w_angle := 0.0
-	var w_shift := Vector2.ZERO
-	match attack:
-		"thrust":
-			w_angle = -0.35 * strike
-			w_shift = fwd * 5.0 * strike
-		"swing":
-			# Raise it back, then bring it down and forward.
-			w_angle = -1.0 * (t / 0.35) if t < 0.35 else -1.0 + 1.8 * ((t - 0.35) / 0.65)
-			if swing_t <= 0.0:
-				w_angle = 0.0
-			w_shift = fwd * 2.0 * strike
-		"shoot":
-			lean = Vector2.ZERO
-			w_shift = -fwd * 2.0 * strike
+	var pose := attack_pose(attack, t) if attacking else [0.0, 0.0, 0.0, 0.0]
+	# Facing the viewer or away, a forward swing turns the weapon less on screen.
+	var w_angle := float(pose[0]) * (0.35 + 0.65 * absf(fwd.x))
+	var w_shift := fwd * float(pose[1])
+	var lean := fwd * float(pose[2]) + Vector2(0, float(pose[3]))
+	# Walk-cycle legs from the animation template replace the body's own legs
+	# while walking and in the lunge of an attack.
+	var leg_frames: Array = []
+	var legs_h := 0.0
+	var legs_rig: Dictionary = WalkRig.legs().get(sex, {}).get(view, {})
+	if not legs_rig.is_empty():
+		var body_id := str(layer_pieces["body"][1])
+		leg_frames = SpriteLibrary.frames("bodies", body_id.replace("body_", "legs_"), view, "walk")
+		legs_h = float(legs_rig["legs"])
+	var leg_tex = null
+	if leg_frames.size() >= 4:
+		if attacking and attack != "shoot" and t >= LUNGE_FROM and t <= LUNGE_TO:
+			leg_tex = leg_frames[int(legs_rig["lunge"]) % leg_frames.size()]
+		elif walking:
+			leg_tex = leg_frames[int(phase / (TAU / 4.0)) % 4]
 	for layer in (ART_BACK_ORDER if back else ART_FRONT_ORDER):
 		var piece: Array = layer_pieces[layer]
 		if str(piece[1]) == "":
@@ -231,11 +254,37 @@ static func _draw_art_layers(ci: CanvasItem, origin: Vector2, px: float, view: S
 			continue
 		match str(layer):
 			"body":
-				SpriteLibrary.draw_walking(ci, tex, origin, s, mirrored, hip, phase, up + lean)
+				if leg_tex != null:
+					var size: Vector2 = tex.get_size()
+					SpriteLibrary.draw(ci, leg_tex, origin, s, mirrored)
+					# Upper body overlaps the new legs by 2 px so the bob never opens a gap.
+					SpriteLibrary.draw_region(ci, tex, origin, s, mirrored,
+						Rect2(0, 0, size.x, minf(size.y, size.y - legs_h + 2.0)), up + lean)
+				elif walking:
+					SpriteLibrary.draw_walking(ci, tex, origin, s, mirrored, hip, phase, up + lean)
+				else:
+					SpriteLibrary.draw_region(ci, tex, origin, s, mirrored, Rect2(Vector2.ZERO, tex.get_size()), up + lean)
 			"weapon":
 				SpriteLibrary.draw_rotated(ci, tex, origin, s, mirrored, hand, w_angle, up + lean + w_shift)
 			_:
 				SpriteLibrary.draw_region(ci, tex, origin, s, mirrored, Rect2(Vector2.ZERO, tex.get_size()), up + lean)
+
+
+## [weapon turn, weapon push, body lean, crouch] at `t` (0-1) through an attack,
+## blended between the keyframes in ATTACK_POSES.
+static func attack_pose(attack: String, t: float) -> Array:
+	var keys: Array = ATTACK_POSES.get(attack, ATTACK_POSES["thrust"])
+	for i in range(1, keys.size()):
+		var b: Array = keys[i]
+		if t <= float(b[0]):
+			var a: Array = keys[i - 1]
+			var span := maxf(float(b[0]) - float(a[0]), 0.0001)
+			var k := smoothstep(0.0, 1.0, (t - float(a[0])) / span)
+			var out: Array = []
+			for j in range(1, 5):
+				out.append(lerpf(float(a[j]), float(b[j]), k))
+			return out
+	return [0.0, 0.0, 0.0, 0.0]
 
 
 static func _placeholder(c: Ctx, layer: String, piece: String, look: Dictionary) -> void:
@@ -506,7 +555,7 @@ static func draw_whole(ci: CanvasItem, origin: Vector2, px: float, category: Str
 		return false
 	var o := origin
 	if swing_t > 0.0:
-		o += Vector2.from_angle(dir * PI / 4.0) * px * 2.0 * sin(PI * clampf(1.0 - swing_t / 0.25, 0.0, 1.0))
+		o += Vector2.from_angle(dir * PI / 4.0) * px * 2.0 * sin(PI * clampf(1.0 - swing_t / ATTACK_TIME, 0.0, 1.0))
 	_shadow(ci, origin, px, 10.0)
 	var s := px / REF_PX * SpriteLibrary.SPRITE_SCALE
 	var phase := walk_t * WALK_SPEED

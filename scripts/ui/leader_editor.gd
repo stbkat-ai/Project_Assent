@@ -35,7 +35,7 @@ class Preview extends Control:
 		var origin := Vector2(size.x / 2.0, size.y * 0.92)
 		var swing := 0.0
 		if attacking:
-			swing = maxf(0.0, 0.25 - fmod(_t, 0.8))
+			swing = maxf(0.0, Figure.ATTACK_TIME - fmod(_t, Figure.ATTACK_TIME + 0.4))
 		Figure.draw_human(self, origin, px, look, gear, dir, _t if walking else 0.0, swing)
 
 

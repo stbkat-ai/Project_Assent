@@ -23,7 +23,11 @@ assets/sprites/<category>/<piece>/<view>.png              still frame
 assets/sprites/<category>/<piece>/<view>_<anim>_<n>.png    animation frames, n = 0, 1, 2 ...
 ```
 
-Animations so far: `walk`. Attacks and hits are code-driven motion for now.
+Animations so far: `walk`. The leader's walk cycle is `bodies/legs_<sex>__<skin>/<view>_walk_<0-3>.png`
+(legs only, on the body's canvas), built by `tools/anim/build_walk.py` from Luke's animation template
+`assets/source/sheet_anim_template.png`; it also writes `scripts/data/walk_rig.gd`. Attacks are keyframed in
+code from the template's poses (`ATTACK_POSES` in `scripts/render/figure.gd`); `tools/anim/preview.py` renders
+a GIF of both. Re-run `build_walk.py` after `tools/paper_doll/build.py`.
 
 | Category | Piece ids (Stone Age) | Notes |
 | --- | --- | --- |

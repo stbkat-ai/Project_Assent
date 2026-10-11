@@ -10,7 +10,7 @@ const TitleScreen = preload("res://scripts/ui/title_screen.gd")
 const BuildingEditor = preload("res://scripts/ui/building_editor.gd")
 const Village = preload("res://scripts/world/village.gd")
 
-const VERSION := "0.9.0 - hut art"
+const VERSION := "0.10.0 - walk and attack animation"
 
 var state: GameState
 var _current: Node = null

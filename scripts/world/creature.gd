@@ -236,7 +236,7 @@ func _separate(delta: float) -> void:
 
 func _attack(enemy) -> void:
 	_cooldown = attack_interval
-	_swing_t = 0.25
+	_swing_t = Figure.ATTACK_TIME
 	if ranged:
 		var shot := Projectile.new()
 		shot.position = position + BODY_CENTER
