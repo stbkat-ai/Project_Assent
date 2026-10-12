@@ -13,31 +13,18 @@ signal finished(action: String)  # "menu", "retry" or "village"
 const GameState = preload("res://scripts/game_state.gd")
 const Creature = preload("res://scripts/world/creature.gd")
 const UnitStats = preload("res://scripts/data/unit_stats.gd")
+const GearCatalog = preload("res://scripts/data/gear_catalog.gd")
 const AppearanceCatalog = preload("res://scripts/data/appearance_catalog.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
 const Scenery = preload("res://scripts/world/scenery.gd")
 const SceneryCatalog = preload("res://scripts/data/scenery_catalog.gd")
 const WildlifeCatalog = preload("res://scripts/data/wildlife_catalog.gd")
 
-## Wildlife roaming the map (species id, position). Wolves, boars and the bear are
-## dangerous; deer, foxes and small game are easier points if you can catch them.
-const WILDLIFE := [
-	["rabbit", Vector2(600, 1450)], ["rabbit", Vector2(820, 1760)], ["rabbit", Vector2(1400, 1660)],
-	["rabbit", Vector2(1700, 1250)], ["rabbit", Vector2(2200, 1520)], ["rabbit", Vector2(950, 1000)],
-	["squirrel", Vector2(500, 1250)], ["squirrel", Vector2(1250, 1100)], ["squirrel", Vector2(1900, 1720)],
-	["squirrel", Vector2(2400, 1100)], ["squirrel", Vector2(700, 600)],
-	["turkey", Vector2(1100, 1560)], ["turkey", Vector2(1550, 850)], ["turkey", Vector2(2100, 1250)],
-	["turkey", Vector2(400, 900)],
-	["doe", Vector2(1300, 500)], ["doe", Vector2(1360, 590)], ["doe", Vector2(2000, 1500)], ["doe", Vector2(2650, 1300)],
-	["stag", Vector2(1240, 430)], ["stag", Vector2(2720, 1420)],
-	["fox", Vector2(900, 1350)], ["fox", Vector2(1700, 600)], ["fox", Vector2(2300, 1720)],
-	["boar", Vector2(1620, 1460)], ["boar", Vector2(2250, 880)], ["boar", Vector2(600, 400)],
-	["bear", Vector2(2760, 1760)],
-]
+const WildernessMap = preload("res://scripts/data/wilderness_map.gd")
+const MapGrid = preload("res://scripts/world/map_grid.gd")
+const Cache = preload("res://scripts/world/cache.gd")
+const GROUND_ART := "res://assets/maps/wilderness_ground.jpg"
 
-const WORLD := Rect2(0, 0, 3000, 2000)
-const START := Vector2(320, 1600)
-const SITE := Vector2(2550, 520)
 const SITE_RADIUS := 130.0
 const SITE_GUARD_RADIUS := 480.0
 const TAP_SLOP := 14.0
@@ -47,8 +34,17 @@ const MAX_ZOOM := 2.4
 ## In 3/4 top-down view, circles on the ground look squashed vertically.
 const GROUND_SQUASH := 0.6
 
-const GROUND := Color(0.29, 0.40, 0.20)
 const GROUND_DARK := Color(0.24, 0.34, 0.17)
+
+## The map (tools/map/build_wilderness.py): a grid of person-sized squares with solid
+## walls and obstacles, terrain that slows or blocks, the camp and the clearing.
+var grid: MapGrid
+var WORLD := Rect2()
+var START := Vector2.ZERO
+var SITE := Vector2.ZERO
+var _caches: Array = []  # Cache nodes not yet found
+var _toast: Label
+var _toast_t := 0.0
 
 var state: GameState
 var hero: Creature
@@ -59,8 +55,6 @@ var _over := false
 var _score := 0
 var _kills := {}  # species id -> count
 
-var _scenery: Array = []  # [kind, position, piece, size, mirrored]
-var _tufts: Array = []  # positions
 var _marker_pos := Vector2.ZERO
 var _marker_t := 0.0
 var _time := 0.0
@@ -81,30 +75,53 @@ var _overlay: Control
 
 func setup(game_state: GameState) -> void:
 	state = game_state
+	grid = MapGrid.new()
+	grid.setup(WildernessMap)
+	WORLD = Rect2(Vector2.ZERO, grid.world_size())
+	START = grid.center_of(WildernessMap.start())
+	SITE = grid.center_of(WildernessMap.site())
 
 
 func _ready() -> void:
-	_generate_scenery()
+	# The painted ground (terrain, the inner forests and rock walls) lies under everything.
+	if ResourceLoader.exists(GROUND_ART):
+		var ground := Sprite2D.new()
+		ground.texture = load(GROUND_ART)
+		ground.centered = false
+		ground.scale = WORLD.size / ground.texture.get_size()
+		ground.z_index = -10
+		add_child(ground)
+	var beyond := ColorRect.new()  # beyond the map's edge
+	beyond.color = GROUND_DARK.darkened(0.3)
+	beyond.position = WORLD.position - Vector2(600, 600)
+	beyond.size = WORLD.size + Vector2(1200, 1200)
+	beyond.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	beyond.z_index = -20
+	add_child(beyond)
 
 	_units = Node2D.new()
 	_units.y_sort_enabled = true
 	add_child(_units)
-	for item in _scenery:
-		_add_scenery(item[0], item[1], item[2], item[3], item[4])
+	# Solid objects (trees, rocks, bushes, stumps, the fronts of the walls), sorted with units.
+	for obj in WildernessMap.objects():
+		_add_scenery(str(obj[1]), Vector2(float(obj[2]), float(obj[3])), str(obj[0]), 24.0, bool(obj[4]))
+	for c in WildernessMap.caches():
+		var cache := Cache.new()
+		cache.setup(c)
+		cache.position = grid.center_of(Vector2i(int(c[2]), int(c[3])))
+		_units.add_child(cache)
+		_caches.append(cache)
 
 	hero = _spawn_human(START, "player", state.leader["look"], state.leader["gear"], true)
 	hero.display_name = str(state.leader["name"])
 	hero.selected = true
 
-	# Two wolf packs on the way, cavemen holding the clearing.
-	for p in [Vector2(1050, 1300), Vector2(1120, 1370)]:
-		_spawn_wolf(p, false)
-	_spawn_wolf(Vector2(1850, 930), false)
-	for p in [Vector2(2380, 430), Vector2(2700, 640)]:
-		_spawn_caveman(p, true)
-	_spawn_wolf(Vector2(2520, 760), true)
-	for entry in WILDLIFE:
-		_spawn_beast(str(entry[0]), entry[1], false)
+	for spawn in WildernessMap.spawns():
+		var pos := grid.center_of(Vector2i(int(spawn[1]), int(spawn[2])))
+		if str(spawn[0]) == "caveman":
+			_spawn_caveman(pos, bool(spawn[3]))
+		else:
+			_spawn_beast(str(spawn[0]), pos, bool(spawn[3]))
 
 	_camera = Camera2D.new()
 	_camera.position = hero.position
@@ -130,6 +147,7 @@ func _spawn_human(pos: Vector2, team: String, look: Dictionary, gear: Dictionary
 	c.gear = gear
 	c.is_hero = is_hero
 	c.bounds = WORLD
+	c.grid = grid
 	c.apply_stats(UnitStats.compute(gear, is_hero))
 	c.died.connect(_on_creature_died)
 	_units.add_child(c)
@@ -178,6 +196,8 @@ func _spawn_beast(species_id: String, pos: Vector2, guards_site: bool) -> void:
 	c.temper = str(info.get("temper", "aggressive"))
 	c.display_name = str(info.get("name", species_id))
 	c.sprite_category = "beasts"
+	c.grid = grid
+	c.scale = Vector2.ONE * float(info.get("scale", 1.0))
 	var pieces: Array = info.get("pieces", [species_id])
 	c.sprite_piece = str(pieces[int(pos.x + pos.y) % pieces.size()])
 	c.bounds = WORLD
@@ -187,29 +207,6 @@ func _spawn_beast(species_id: String, pos: Vector2, guards_site: bool) -> void:
 	if guards_site:
 		c.add_to_group("site_guards")
 	_units.add_child(c)
-
-
-func _generate_scenery() -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 7
-	_scatter(rng, "tree", SceneryCatalog.trees(), 150, 220.0, 24.0)
-	_scatter(rng, "bush", SceneryCatalog.bushes(), 70, 160.0, 14.0)
-	_scatter(rng, "rock", SceneryCatalog.rocks(), 55, 160.0, 10.0)
-	_scatter(rng, "plant", SceneryCatalog.ground_cover(), 260, 60.0, 8.0)
-	for i in 500:
-		_tufts.append(Vector2(rng.randf_range(0, WORLD.size.x), rng.randf_range(0, WORLD.size.y)))
-
-
-## Place `count` random pieces of one kind, keeping the start and the clearing open.
-func _scatter(rng: RandomNumberGenerator, kind: String, pieces: Array, count: int, keep_clear: float, size: float) -> void:
-	var placed := 0
-	while placed < count:
-		var p := Vector2(rng.randf_range(0, WORLD.size.x), rng.randf_range(0, WORLD.size.y))
-		if p.distance_to(START) < keep_clear or p.distance_to(SITE) < SITE_RADIUS + keep_clear * 0.3:
-			continue
-		var piece: String = pieces[rng.randi_range(0, pieces.size() - 1)]
-		_scenery.append([kind, p, piece, size * rng.randf_range(0.8, 1.25), rng.randf() < 0.5])
-		placed += 1
 
 
 # --- Frame update ------------------------------------------------------------
@@ -222,7 +219,45 @@ func _process(delta: float) -> void:
 	if is_instance_valid(hero) and hero.is_alive():
 		_hero_card.text = "%s   HP %d/%d" % [hero.display_name, hero.hp, hero.max_hp]
 		_update_objective()
+		_check_caches()
+	if _toast_t > 0.0:
+		_toast_t -= delta
+		_toast.visible = _toast_t > 0.0
 	queue_redraw()
+
+
+## Off the beaten path: walking onto a cache picks up its reward.
+func _check_caches() -> void:
+	for cache in _caches.duplicate():
+		if hero.position.distance_to(cache.position) > 26.0:
+			continue
+		_caches.erase(cache)
+		var text := "Found: %s" % cache.cache_name
+		if cache.reward == "unlock":
+			var item_name := str(GearCatalog.get_item(cache.value).get("name", cache.value))
+			if state.unlocked.has(cache.value):
+				text += "  (%s already unlocked: +25 points)" % item_name
+				_add_points(25)
+			else:
+				state.unlocked.append(cache.value)
+				state.save_game()
+				text += "  -  %s unlocked for your leader and soldiers!" % item_name
+		else:
+			_add_points(int(cache.value))
+			text += "  -  +%s points" % cache.value
+		cache.queue_free()
+		_show_toast(text)
+
+
+func _add_points(points: int) -> void:
+	_score += points
+	_score_label.text = _score_text()
+
+
+func _show_toast(text: String) -> void:
+	_toast.text = text
+	_toast.visible = true
+	_toast_t = 4.0
 
 
 func _guards_left() -> int:
@@ -292,10 +327,6 @@ func _on_creature_died(c: Node2D) -> void:
 # --- Drawing -----------------------------------------------------------------
 
 func _draw() -> void:
-	draw_rect(Rect2(WORLD.position - Vector2(600, 600), WORLD.size + Vector2(1200, 1200)), GROUND_DARK.darkened(0.3))
-	draw_rect(WORLD, GROUND)
-	for p in _tufts:
-		draw_rect(Rect2(p, Vector2(3, 5)), GROUND_DARK)
 
 	# The clearing: a circle lying on the ground.
 	var pulse := 0.5 + 0.5 * sin(_time * 3.0)
@@ -450,6 +481,17 @@ func _build_ui() -> void:
 	hint.offset_right = -12
 	hint.offset_bottom = -12
 	root.add_child(hint)
+
+	_toast = UiStyle.label("", 22, UiStyle.GOLD)
+	var toast_box := StyleBoxFlat.new()
+	toast_box.bg_color = Color(0.08, 0.07, 0.06, 0.8)
+	toast_box.set_content_margin_all(10)
+	_toast.add_theme_stylebox_override("normal", toast_box)
+	_toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_toast.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_toast.offset_top = 90
+	_toast.visible = false
+	root.add_child(_toast)
 
 	_overlay = CenterContainer.new()
 	_overlay.visible = false

@@ -32,6 +32,8 @@ static func species() -> Array:
 			"hp": 35, "damage": 5, "interval": 1.2, "speed": 90.0, "aggro": 0.0},
 		{"id": "wolf", "name": "Wolf", "pieces": ["wolf_gray", "wolf_brown"], "points": 25, "temper": "aggressive",
 			"hp": 20, "damage": 3, "interval": 1.0, "speed": 100.0, "aggro": 190.0},
+		{"id": "alpha_wolf", "name": "Alpha wolf", "pieces": ["wolf_gray"], "points": 60, "temper": "aggressive",
+			"hp": 60, "damage": 6, "interval": 0.9, "speed": 105.0, "aggro": 220.0, "scale": 1.3},
 		{"id": "boar", "name": "Wild boar", "pieces": ["boar"], "points": 40, "temper": "territorial",
 			"hp": 50, "damage": 6, "interval": 1.2, "speed": 95.0, "aggro": 110.0},
 		{"id": "bear", "name": "Brown bear", "pieces": ["bear"], "points": 100, "temper": "territorial",

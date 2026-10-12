@@ -11,7 +11,7 @@ const BuildingEditor = preload("res://scripts/ui/building_editor.gd")
 const Village = preload("res://scripts/world/village.gd")
 const SoldierEditor = preload("res://scripts/ui/soldier_editor.gd")
 
-const VERSION := "0.15.0 - combat animation"
+const VERSION := "0.16.0 - wilderness map"
 
 var state: GameState
 var _current: Node = null

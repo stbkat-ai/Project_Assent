@@ -22,6 +22,9 @@ const SCRIPTS := [
 	"res://scripts/data/building_parts.gd",
 	"res://scripts/data/village_layout.gd",
 	"res://scripts/data/wildlife_catalog.gd",
+	"res://scripts/data/wilderness_map.gd",
+	"res://scripts/world/map_grid.gd",
+	"res://scripts/world/cache.gd",
 	"res://scripts/render/building_draw.gd",
 	"res://scripts/world/building.gd",
 	"res://scripts/world/map_controls.gd",
@@ -62,6 +65,10 @@ func _init() -> void:
 	var game_state = load("res://scripts/game_state.gd")
 	if game_state != null:
 		_test_army(game_state)
+	var wmap = load("res://scripts/data/wilderness_map.gd")
+	var grid_script = load("res://scripts/world/map_grid.gd")
+	if wmap != null and grid_script != null:
+		_test_map(wmap, grid_script)
 	var dirs = load("res://scripts/render/directions.gd")
 	var sprites = load("res://scripts/render/sprite_library.gd")
 	var figure = load("res://scripts/render/figure.gd")
@@ -383,3 +390,49 @@ func _test_army(game_state) -> void:
 	gs.raise_squad(str(bp2["id"]))
 	gs.delete_blueprint(str(bp2["id"]))
 	_check(gs.squads.is_empty() and gs.get_blueprint(str(bp2["id"])).is_empty(), "deleting a design disbands its squads")
+
+
+func _test_map(wmap, grid_script) -> void:
+	print("Wilderness map:")
+	var grid = grid_script.new()
+	grid.setup(wmap)
+	var start: Vector2i = wmap.start()
+	var site: Vector2i = wmap.site()
+	_check(grid.walkable(start) and grid.walkable(site), "the camp and the clearing are open ground")
+	var path: PackedVector2Array = grid.find_path(grid.center_of(start), grid.center_of(site))
+	_check(path.size() > 10 and grid.cell_of(path[path.size() - 1]) == site, "there is a way from the camp to the clearing")
+	var deep_blocked := true
+	var shallow_slow := false
+	var tall_slow := false
+	for y in grid.size.y:
+		for x in grid.size.x:
+			var c := Vector2i(x, y)
+			match grid.terrain_at(c):
+				"W":
+					if grid.walkable(c):
+						deep_blocked = false
+				"~":
+					if grid.walkable(c) and grid.speed_at(grid.center_of(c)) < 0.7:
+						shallow_slow = true
+				":":
+					if grid.walkable(c) and grid.speed_at(grid.center_of(c)) < 1.0:
+						tall_slow = true
+	_check(deep_blocked, "deep water can't be walked through")
+	_check(shallow_slow and tall_slow, "shallow water and tall grass slow you down")
+	var reachable := true
+	for c in wmap.caches():
+		var cell := Vector2i(int(c[2]), int(c[3]))
+		var p: PackedVector2Array = grid.find_path(grid.center_of(start), grid.center_of(cell))
+		if not grid.walkable(cell) or p.is_empty() or grid.cell_of(p[p.size() - 1]) != cell:
+			reachable = false
+	_check(reachable and wmap.caches().size() >= 3, "every cache off the beaten path can be reached")
+	var spawns_ok := true
+	for sp in wmap.spawns():
+		if not grid.walkable(Vector2i(int(sp[1]), int(sp[2]))):
+			spawns_ok = false
+	_check(spawns_ok, "every creature starts on open ground")
+	var objects_solid := true
+	for o in wmap.objects():
+		if grid.walkable(grid.cell_of(Vector2(float(o[2]), float(o[3]) - 4.0))):
+			objects_solid = false
+	_check(objects_solid, "trees, rocks and bushes are solid")

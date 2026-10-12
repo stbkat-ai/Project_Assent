@@ -9,7 +9,7 @@ Stone Age to the space age. Built in **Godot 4** (GDScript), 2D pixel art, lands
 
 Both links rebuild automatically about 5 minutes after every push to `main`.
 
-## What's playable now (v0.15.0)
+## What's playable now (v0.16.0)
 
 | Prototype | Opening phase | What you can do |
 | --- | --- | --- |
@@ -43,6 +43,15 @@ leader is still the code-drawn placeholder.
 Remaining placeholders are pixel art drawn in code. Every clothing and gear piece is its own layer, and
 real sprites replace placeholders **one piece at a time** as they're added: see
 [`assets/README.md`](assets/README.md) for the folder layout, naming and the sheet-slicing tools.
+
+**The wilderness map (0.16.0):** the wilderness is now a real map on a grid of person-sized squares (like the
+original Warcraft), painted from Luke's terrain sheet: grass, tall grass, dirt, a trampled path, rocky ground,
+sand, a river with two fords and a pond. Trees, bushes, rocks, stumps and logs are solid, forests and a rock
+ridge form walls, and everyone walks around them on found paths. Deep water can't be crossed; shallow water,
+tall grass and rocky ground slow you down; the path is quicker. Off the beaten path, narrow gaps in the woods
+lead to four hidden spots with caches to walk onto: a Flint cache (unlocks the Flint Axe) and a Bone cache
+(unlocks the Bone-tipped Spear), each guarded by an **alpha wolf** and its pack, Sling and stones on a hidden
+beach (unlocks the Sling), and Honey and hides in the bear's den (+60 points).
 
 **Combat animation (0.15.0):** attacks follow the poses on Luke's animation sheets: the weapon hand moves (raised
 overhead for a club or axe wind-up and the overhead stab, driven forward in a spear thrust, low in a sweep), the

@@ -55,6 +55,12 @@ var bounds := Rect2(0, 0, 3000, 2000)
 var home := Vector2.ZERO
 
 var move_target = null  # Vector2 or null
+## The map's grid (map_grid.gd), or null on maps without one. With a grid, units walk
+## along paths around solid squares, at the speed of the ground under them.
+var grid = null
+var _path := PackedVector2Array()
+var _path_i := 0
+var _repath_t := 0.0
 var target = null  # creature or null
 var dir := Directions.S  # facing, 0-7 (see directions.gd)
 var selected := false
@@ -101,7 +107,28 @@ func is_alive() -> bool:
 
 func order_move(point: Vector2) -> void:
 	target = null
+	_go(point)
+
+
+## Head for `point`: along a path around obstacles when the map has a grid.
+func _go(point: Vector2) -> void:
 	move_target = point
+	if grid != null:
+		_set_path(point)
+
+
+func _set_path(point: Vector2) -> void:
+	_path = grid.find_path(position, point)
+	_path_i = 1 if _path.size() > 1 else 0
+
+
+## Step along the current path. False when it's used up.
+func _follow(delta: float) -> bool:
+	while _path_i < _path.size() and position.distance_to(_path[_path_i]) < 3.0:
+		_path_i += 1
+	if _path_i >= _path.size():
+		return false
+	return _step_toward(_path[_path_i], delta)
 
 
 func order_attack(enemy) -> void:
@@ -133,13 +160,27 @@ func _process(delta: float) -> void:
 	if target != null:
 		var dist := position.distance_to(target.position)
 		if dist > attack_range:
-			moving = _step_toward(target.position, delta)
+			if grid != null:
+				_repath_t -= delta
+				if _repath_t <= 0.0 or _path_i >= _path.size():
+					_repath_t = 0.4
+					_set_path(target.position)
+				moving = _follow(delta)
+				if not moving:
+					moving = _step_toward(target.position, delta)
+			else:
+				moving = _step_toward(target.position, delta)
 		else:
 			_face(target.position)
 			if _cooldown <= 0.0:
 				_attack(target)
 	elif move_target != null:
-		if position.distance_to(move_target) < 4.0:
+		if grid != null:
+			moving = _follow(delta)
+			if not moving:
+				move_target = null
+				_returning = false
+		elif position.distance_to(move_target) < 4.0:
 			move_target = null
 			_returning = false
 		else:
@@ -168,18 +209,22 @@ func _think(delta: float) -> void:
 		return
 	if target != null and position.distance_to(home) > leash_radius:
 		target = null
-		move_target = home
+		_go(home)
 		_returning = true
 		return
 	if temper == "skittish":
 		target = null
 		var threat = _nearest_enemy(FLEE_RADIUS)
-		if threat != null:
+		_repath_t -= delta
+		if threat != null and (move_target == null or _repath_t <= 0.0):
+			_repath_t = 0.6
 			var away: Vector2 = position - threat.position
 			if away.length() < 0.01:
 				away = Vector2.RIGHT
-			move_target = (position + away.normalized() * FLEE_DISTANCE).clamp(bounds.position, bounds.end)
+			_go((position + away.normalized() * FLEE_DISTANCE).clamp(bounds.position, bounds.end))
 			home = move_target
+			return
+		if threat != null:
 			return
 	elif target == null:
 		var enemy = _nearest_enemy(aggro_radius)
@@ -191,7 +236,7 @@ func _think(delta: float) -> void:
 			_wander_t -= delta
 			if _wander_t <= 0.0:
 				_wander_t = _rng.randf_range(2.0, 5.0)
-				move_target = home + Vector2(_rng.randf_range(-90, 90), _rng.randf_range(-90, 90))
+				_go(home + Vector2(_rng.randf_range(-90, 90), _rng.randf_range(-90, 90)))
 
 
 func _nearest_enemy(radius: float):
@@ -213,9 +258,12 @@ func _step_toward(point: Vector2, delta: float) -> bool:
 	var dist := to.length()
 	if dist < 0.5:
 		return false
-	position += to / dist * minf(speed * delta, dist)
-	position = position.clamp(bounds.position, bounds.end)
+	var pace := speed * (grid.speed_at(position) if grid != null else 1.0)
+	var next := (position + to / dist * minf(pace * delta, dist)).clamp(bounds.position, bounds.end)
 	_face(point)
+	if grid != null and not grid.walkable(grid.cell_of(next)):
+		return false  # never into anything solid
+	position = next
 	return true
 
 
@@ -237,7 +285,9 @@ func _separate(delta: float) -> void:
 			if d < 0.01:
 				away = Vector2(_rng.randf_range(-1, 1), _rng.randf_range(-1, 1))
 				d = maxf(away.length(), 0.01)
-			position += away / d * (18.0 - d) * 4.0 * delta
+			var pushed: Vector2 = position + away / d * (18.0 - d) * 4.0 * delta
+			if grid == null or grid.walkable(grid.cell_of(pushed)):
+				position = pushed
 
 
 func _attack(enemy) -> void:

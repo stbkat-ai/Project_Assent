@@ -59,6 +59,11 @@ icons (`assets/ui/icons/weapon_*.png`) and projectiles (`assets/sprites/projecti
 right; the game turns them to their flight) are cut from `sheet_soldier_weapons_anim.png` by
 `tools/ui/build_icons.py`.
 
+Battle maps: `tools/map/build_wilderness.py` lays out the wilderness grid (96 x 64 squares of 32 px), paints the
+ground from `assets/source/sheet_terrain.png` into `assets/maps/wilderness_ground.jpg` (soft terrain edges,
+foam, the inner forests and rock walls and small plants baked in) and writes `scripts/data/wilderness_map.gd`
+(terrain, solid squares, solid objects, spawns, caches). `tools/map/preview.py` renders the whole map.
+
 The title screen art is `assets/ui/title.png` (its painted buttons are tap zones, see
 `scripts/ui/title_screen.gd`). Original ChatGPT sheets are kept in `assets/source/` (not shipped in the game).
 
