@@ -2,7 +2,9 @@ extends RefCounted
 ## Draws a building in 3/4 top-down view from its design. Every part is its own
 ## layer from Luke's hut sheets (assets/sprites/buildings/<shape>_<slot>_<id>/s.png),
 ## all drawn on one shared canvas, so they simply stack: walls, roof, doorway,
-## hanging decoration, roof crest, yard prop. A missing part is skipped; with no
+## hanging decoration, roof crest, yard prop. Dyed cloth (banners, pennants,
+## painted hides) is a separate grey layer, <piece>__tint, drawn in the tribe's
+## color. A missing part is skipped; with no
 ## walls or roof art at all a plain placeholder hut is drawn instead.
 ##
 ## `origin` is the center of the building's footprint on the ground; `width` is
@@ -13,6 +15,8 @@ const BuildingParts = preload("res://scripts/data/building_parts.gd")
 const SpriteLibrary = preload("res://scripts/render/sprite_library.gd")
 
 const LAYERS := ["walls", "roof", "door", "hang", "crest", "yard"]
+## Used when no tribe color is given (blood red, like the sheets' banners).
+const DEFAULT_TRIBE := Color(0.62, 0.16, 0.13)
 ## Share of the footprint width the walls fill.
 const WALL_FILL := 0.9
 
@@ -30,8 +34,16 @@ static func part_texture(shape: String, slot: String, id: String):
 	return SpriteLibrary.frame_at("buildings", piece, "s", "", 0.0)
 
 
+## The tribal-color layer of a part, or null if it has no dyed cloth.
+static func part_tint_texture(shape: String, slot: String, id: String):
+	if id == "" or id == "none":
+		return null
+	var piece := "%s_%s_%s__tint" % [BuildingCatalog.art_shape(slot, shape), slot, id]
+	return SpriteLibrary.frame_at("buildings", piece, "s", "", 0.0)
+
+
 static func draw_building(ci: CanvasItem, type_id: String, design: Dictionary, origin: Vector2, width: float,
-		tint: Color = Color.WHITE) -> void:
+		tint: Color = Color.WHITE, tribe: Color = DEFAULT_TRIBE) -> void:
 	var d := BuildingCatalog.normalized(type_id, design)
 	var shape := str(d["shape"])
 	var scale := width * WALL_FILL / BuildingParts.wall_width()
@@ -51,6 +63,9 @@ static func draw_building(ci: CanvasItem, type_id: String, design: Dictionary, o
 			var apex := float(apexes.get("%s/%s" % [shape, d["roof"]], BuildingParts.crest_apex()))
 			at.y += (apex - BuildingParts.crest_apex()) * scale
 		SpriteLibrary.draw(ci, tex, at, scale, false, tint)
+		var dyed = part_tint_texture(shape, slot, str(d.get(slot, "none")))
+		if dyed != null:
+			SpriteLibrary.draw(ci, dyed, at, scale, false, tint * tribe)
 		drawn += 1
 	if drawn == 0:
 		_placeholder(ci, type_id, origin, width, tint)

@@ -6,6 +6,7 @@ extends Control
 signal done(action: String)  # "next" or "back"
 
 const GameState = preload("res://scripts/game_state.gd")
+const AppearanceCatalog = preload("res://scripts/data/appearance_catalog.gd")
 const BuildingCatalog = preload("res://scripts/data/building_catalog.gd")
 const PartDraw = preload("res://scripts/render/building_draw.gd")
 const UiStyle = preload("res://scripts/ui/ui_style.gd")
@@ -39,10 +40,11 @@ class Preview extends Control:
 	const BuildingDraw = preload("res://scripts/render/building_draw.gd")
 	var type_id := "hut"
 	var design: Dictionary = {}
+	var tribe := Color(0.62, 0.16, 0.13)
 
 	func _draw() -> void:
 		var width := minf(size.x * 0.5, size.y * 0.55)
-		BuildingDraw.draw_building(self, type_id, design, Vector2(size.x * 0.5, size.y * 0.84), width)
+		BuildingDraw.draw_building(self, type_id, design, Vector2(size.x * 0.5, size.y * 0.84), width, Color.WHITE, tribe)
 
 
 var state: GameState
@@ -74,6 +76,7 @@ func _ready() -> void:
 
 	_preview = Preview.new()
 	_preview.type_id = type_id
+	_preview.tribe = _tribe()
 	_preview.size = Rect2(LAYOUT["stage"]).size
 	_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_screen.stage.add_child(_preview)
@@ -95,7 +98,8 @@ func _ready() -> void:
 	front.caption = "Front"
 	front.chosen = true
 	front.draw_fn = func(ci: CanvasItem, r: Rect2) -> void:
-		PartDraw.draw_building(ci, type_id, _design, Vector2(r.get_center().x, r.end.y - r.size.y * 0.12), r.size.x * 0.48)
+		PartDraw.draw_building(ci, type_id, _design, Vector2(r.get_center().x, r.end.y - r.size.y * 0.12), r.size.x * 0.48,
+			Color.WHITE, _tribe())
 	_screen.viewbar.add_child(front)
 	_front_tile = front
 	var note := UiStyle.label("Other views (right, back, left)\narrive with more hut art.", 22, UiStyle.MUTED)
@@ -134,7 +138,7 @@ func _draw_option(ci: CanvasItem, r: Rect2, slot: String, id: String) -> void:
 		var trial := _design.duplicate()
 		trial["shape"] = id
 		PartDraw.draw_building(ci, type_id, BuildingCatalog.normalized(type_id, trial),
-			Vector2(r.get_center().x, r.end.y - r.size.y * 0.1), r.size.x * 0.42)
+			Vector2(r.get_center().x, r.end.y - r.size.y * 0.1), r.size.x * 0.42, Color.WHITE, _tribe())
 		return
 	if id == "none":
 		var c := r.get_center()
@@ -150,6 +154,9 @@ func _draw_option(ci: CanvasItem, r: Rect2, slot: String, id: String) -> void:
 	var zoom := minf(r.size.x / used.size.x, r.size.y / used.size.y) * 0.95
 	var dest := Rect2(r.get_center() - used.size * zoom / 2.0, used.size * zoom)
 	ci.draw_texture_rect_region(tex, dest, used)
+	var dyed = PartDraw.part_tint_texture(_shape(), slot, id)
+	if dyed != null:
+		ci.draw_texture_rect_region(dyed, dest, used, _tribe())
 
 
 ## The part's drawn pixels within its shared canvas (cached).
@@ -217,3 +224,7 @@ func _on_action(act: String) -> void:
 		"cancel":
 			state.save_game()
 			done.emit("back")
+
+
+func _tribe() -> Color:
+	return AppearanceCatalog.color_of("tribe_color", state.tribe_color())

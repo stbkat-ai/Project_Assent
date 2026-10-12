@@ -15,6 +15,7 @@ round-hut parts on the left half and longhouse parts on the right half.
 """
 import os
 import re
+import shutil
 import sys
 
 import numpy as np
@@ -117,7 +118,61 @@ def apex(roof_canvas):
     return int(rows.min()) if len(rows) else 40
 
 
+# Parts whose red is not cloth (flames).
+NO_TINT = {"fire_pit"}
+
+
+def _label(mask):
+    """4-connected blobs: (count, label image)."""
+    labels = np.zeros(mask.shape, np.int32)
+    n = 0
+    for y, x in zip(*np.nonzero(mask)):
+        if labels[y, x]:
+            continue
+        n += 1
+        stack = [(y, x)]
+        labels[y, x] = n
+        while stack:
+            cy, cx = stack.pop()
+            for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                ny, nx = cy + dy, cx + dx
+                if 0 <= ny < mask.shape[0] and 0 <= nx < mask.shape[1] and mask[ny, nx] and not labels[ny, nx]:
+                    labels[ny, nx] = n
+                    stack.append((ny, nx))
+    return n, labels
+
+
 REF_APEX = 40  # crests are drawn for a roof whose top is here; the game shifts them per roof
+
+
+def split_tribal(canvas):
+    """Separate a part's dyed cloth (the sheets paint banners red or blue) into a
+    grey "tint" layer the game colors with the tribe's color. Returns (base, tint or None)."""
+    a = np.asarray(canvas).astype(float)
+    rgb = a[..., :3] / 255.0
+    mx, mn = rgb.max(axis=-1), rgb.min(axis=-1)
+    d = np.maximum(mx - mn, 1e-6)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    hue = np.where(mx == r, ((g - b) / d) % 6, np.where(mx == g, (b - r) / d + 2, (r - g) / d + 4)) * 60
+    sat = np.where(mx > 0, d / np.maximum(mx, 1e-6), 0)
+    opaque = a[..., 3] > 0
+    red = ((hue <= 16) | (hue >= 340)) & (sat > 0.42) & (mx > 0.28)
+    blue = (hue >= 195) & (hue <= 250) & (sat > 0.30) & (mx > 0.22)
+    cloth = opaque & (red | blue)
+    # Only patches of cloth, not stray reddish outline pixels.
+    n, labels = _label(cloth)
+    for i in range(1, n + 1):
+        if (labels == i).sum() < 8:
+            cloth[labels == i] = False
+    if cloth.sum() < 6:
+        return canvas, None
+    shade = np.clip(mx / max(np.percentile(mx[cloth], 95), 1e-3), 0.35, 1.0)
+    tint = np.zeros_like(a)
+    tint[..., 0] = tint[..., 1] = tint[..., 2] = shade * 255
+    tint[..., 3] = np.where(cloth, a[..., 3], 0)
+    base = a.copy()
+    base[cloth] = 0
+    return Image.fromarray(base.astype(np.uint8)), Image.fromarray(tint.astype(np.uint8))
 
 
 def place(slot, shape, im):
@@ -150,6 +205,7 @@ def place(slot, shape, im):
 
 def main():
     cut = cut_all()
+    tinted = 0
     options = {}  # (shape, slot) -> [[id, name, chief_only]]
     apexes = {}  # (shape, roof id) -> y
     out_root = os.path.join(ROOT, "assets", "sprites", "buildings")
@@ -161,7 +217,15 @@ def main():
         canvas = place(slot, half if shape == "any" else shape, pieces[i])
         folder = os.path.join(out_root, "%s_%s_%s" % (shape, slot, pid))
         os.makedirs(folder, exist_ok=True)
-        canvas.save(os.path.join(folder, "s.png"))
+        base, tint = (canvas, None) if pid in NO_TINT or slot == "walls" else split_tribal(canvas)
+        base.save(os.path.join(folder, "s.png"))
+        tint_folder = folder + "__tint"
+        if tint is not None:
+            os.makedirs(tint_folder, exist_ok=True)
+            tint.save(os.path.join(tint_folder, "s.png"))
+            tinted += 1
+        elif os.path.isdir(tint_folder):
+            shutil.rmtree(tint_folder)
         options.setdefault((shape, slot), [])
         if any(o[0] == pid for o in options[(shape, slot)]):
             sys.exit("duplicate id %s %s %s" % (shape, slot, pid))
@@ -169,7 +233,7 @@ def main():
         if slot == "roof":
             apexes[(shape, pid)] = apex(canvas)
     write_gd(options, apexes)
-    print("wrote %d parts" % len(PARTS))
+    print("wrote %d parts (%d with tribal-color cloth)" % (len(PARTS), tinted))
 
 
 def write_gd(options, apexes):

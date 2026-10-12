@@ -13,7 +13,7 @@ scripts/data/rig.gd (hand and hip positions per sex and view) for animation.
 Output ids (assets/sprites/<category>/<id>/<view>.png):
   bodies/body_<sex>__<skin>            hair/<sex>_<style>__<hair color>
   gear/<sex>_<gear id>                 clothing/<sex>_<clothing id>
-  clothing/<sex>_paint_<color>__<skin>
+  (war paint: tools/paper_doll/build_paint.py, run after this)
 """
 import os
 import shutil
@@ -64,7 +64,6 @@ PIECES = [
     (('clothing', 'fur_cloak'), {'male': ('male2', 'cloak_fur', 'all'), 'female': ('female', 'cloak_fur', 'all')}, 'torso', 1.30, dict(dy=-5)),
     (('clothing', 'hide_skirt'), {'male': ('male2', 'skirt_hide', 'all'), 'female': ('female', 'skirt_hide', 'all')}, 'waist', 0.95, dict(dy=-2)),
     (('clothing', 'bone_headband'), {'male': ('male2', 'headband_bone', 'all'), 'female': ('female', 'headband_bone', 'all')}, 'head', 1.12, dict(dy=-1)),
-    (('clothing', 'paint_red'), {'male': ('male2', 'paint_red', 'all')}, 'head', 1.0, dict(dy=0)),
     (('clothing', 'animal_hood'), {'male': ('male1', 'hood_wolf', 'all'), 'female': ('female', 'hood_wolf', 'all')}, 'head', 1.55, dict(dy=-6)),
     (('clothing', 'antler_skull'), {'male': ('male1', 'helm_antler', 'all'), 'female': ('female', 'helm_antler', 'all')}, 'head', 1.85, dict(dy=-12)),
     (('gear', 'spear'), both(('weapons', 'spear_stone', 'all')), 'main', 0.95, dict(grip=0.18)),

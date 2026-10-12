@@ -9,7 +9,7 @@ Stone Age to the space age. Built in **Godot 4** (GDScript), 2D pixel art, lands
 
 Both links rebuild automatically about 5 minutes after every push to `main`.
 
-## What's playable now (v0.12.0)
+## What's playable now (v0.13.0)
 
 | Prototype | Opening phase | What you can do |
 | --- | --- | --- |
@@ -43,6 +43,12 @@ leader is still the code-drawn placeholder.
 Remaining placeholders are pixel art drawn in code. Every clothing and gear piece is its own layer, and
 real sprites replace placeholders **one piece at a time** as they're added: see
 [`assets/README.md`](assets/README.md) for the folder layout, naming and the sheet-slicing tools.
+
+**Tribal colors (0.13.0):** the tribe's color now shows on the models. War paint is a single "Tribal paint"
+choice (a stripe across the eyes, a chest band and armbands, for both bodies in every direction) always drawn
+in the tribe's color, and every banner, pennant and dyed hide on the huts (hangings, chieftain roofs, banner
+doors and crests) takes the tribe's color too. Change it in the leader's Body tab or the soldier's Tribal
+color strip and the whole tribe follows.
 
 **Soldiers and squads (0.12.0):** the first army. A soldier design (blueprint) sets the look and gear every
 soldier of its squads shares; its gear cost sets the squad size (cheap soldiers come 8 to a squad, pricier ones

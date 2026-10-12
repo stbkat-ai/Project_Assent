@@ -11,7 +11,7 @@ const BuildingEditor = preload("res://scripts/ui/building_editor.gd")
 const Village = preload("res://scripts/world/village.gd")
 const SoldierEditor = preload("res://scripts/ui/soldier_editor.gd")
 
-const VERSION := "0.12.0 - soldiers and squads"
+const VERSION := "0.13.0 - tribal colors"
 
 var state: GameState
 var _current: Node = null

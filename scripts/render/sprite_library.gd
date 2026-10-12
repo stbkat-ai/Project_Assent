@@ -56,10 +56,10 @@ static func draw(ci: CanvasItem, tex: Texture2D, origin: Vector2, scale: float, 
 ## Draw only `region` of `tex` (texture pixels), moved by `shift` art pixels.
 ## Used to animate parts of one sprite, e.g. lifting one leg while walking.
 static func draw_region(ci: CanvasItem, tex: Texture2D, origin: Vector2, scale: float, mirrored: bool,
-		region: Rect2, shift: Vector2 = Vector2.ZERO) -> void:
+		region: Rect2, shift: Vector2 = Vector2.ZERO, tint: Color = Color.WHITE) -> void:
 	var size := tex.get_size()
 	ci.draw_set_transform(origin, 0.0, Vector2(-scale if mirrored else scale, scale))
-	ci.draw_texture_rect_region(tex, Rect2(Vector2(-size.x / 2.0, -size.y) + region.position + shift, region.size), region)
+	ci.draw_texture_rect_region(tex, Rect2(Vector2(-size.x / 2.0, -size.y) + region.position + shift, region.size), region, tint)
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 

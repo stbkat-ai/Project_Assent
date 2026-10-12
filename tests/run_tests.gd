@@ -202,10 +202,10 @@ func _test_sprites(sprites, figure) -> void:
 	_check(p["hair"][1] == "" and p["headwear"][1] == "", "bald and no headwear draw nothing")
 	_check(p["cloak"][1] == "female_fur_cloak" and p["armor"][1] == "female_leather_armor", "worn pieces use the body's own art")
 	_check(p["shield"][2] == "", "no shield with a two-handed weapon")
-	var q: Dictionary = figure.pieces({"sex": "male", "skin": "skin5", "hair": "braids", "hair_color": "grey", "paint": "red"},
+	var q: Dictionary = figure.pieces({"sex": "male", "skin": "skin5", "hair": "braids", "hair_color": "grey", "paint": "tribal"},
 		{"main_hand": "club"})
 	_check(q["hair"][1] == "male_braids__grey", "hair art is picked per sex and hair color")
-	_check(q["paint"][1] == "male_paint_red__skin5", "war paint art is picked per skin tone")
+	_check(q["paint"][1] == "male_paint_tribal", "war paint is one tribal layer per body (drawn in the tribe's color)")
 	_check(q["weapon"][1] == "male_club", "weapons are fitted per body")
 
 
@@ -272,7 +272,21 @@ func _test_art(sprites, scenery) -> void:
 				if sprites.frames(layer[0], sex + "_" + layer[1], view).is_empty():
 					layers_ok = false
 	_check(layers_ok, "every paper-doll layer has all 5 views for both bodies")
-	_check(not sprites.frames("clothing", "male_paint_red__skin1", "s").is_empty(), "red war paint has art")
+	var paint_ok := true
+	for sex in ["male", "female"]:
+		for view in ["s", "se", "e", "ne", "n"]:
+			if sprites.frames("clothing", "%s_paint_tribal" % sex, view).is_empty():
+				paint_ok = false
+	_check(paint_ok, "tribal war paint has art for both bodies in all 5 views")
+	var tinted := 0
+	for slot in ["roof", "hang"]:
+		for shape in ["round", "long"]:
+			var parts = load("res://scripts/data/building_catalog.gd")
+			for row in parts.options(slot, shape, "chief_hut"):
+				var piece := "%s_%s_%s__tint" % [parts.art_shape(slot, shape), slot, row[0]]
+				if not sprites.frames("buildings", piece, "s").is_empty():
+					tinted += 1
+	_check(tinted >= 10, "hut banners and dyed roofs have a tribal-color layer")
 	var rig = load("res://scripts/data/rig.gd")
 	var rig_ok: bool = rig != null
 	if rig != null:

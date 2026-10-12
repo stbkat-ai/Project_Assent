@@ -15,6 +15,7 @@ extends Node2D
 signal finished(action: String)  # "menu", "redesign:<type>", "soldier:<blueprint id>" or "soldier_new:<blueprint id>"
 
 const GameState = preload("res://scripts/game_state.gd")
+const AppearanceCatalog = preload("res://scripts/data/appearance_catalog.gd")
 const WildlifeCatalog = preload("res://scripts/data/wildlife_catalog.gd")
 const BuildingCatalog = preload("res://scripts/data/building_catalog.gd")
 const VillageLayout = preload("res://scripts/data/village_layout.gd")
@@ -91,6 +92,7 @@ func _ready() -> void:
 	add_child(_controls)
 
 	_ghost = Building.new()
+	_ghost.tribe = _tribe()
 	_ghost.ghost = true
 	_ghost.visible = false
 	_units.add_child(_ghost)
@@ -137,6 +139,7 @@ func _spawn_building(type_id: String, rect: Rect2i) -> Building:
 		var size: Vector2i = BuildingCatalog.get_type(type_id).get("footprint", Vector2i(3, 3))
 		rect = Rect2i(rect.position, size)
 	var b := Building.new()
+	b.tribe = _tribe()
 	b.setup(type_id, _design(type_id), rect)
 	_units.add_child(b)
 	_buildings.append(b)
@@ -571,3 +574,7 @@ func _close_army() -> void:
 	if _army != null and is_instance_valid(_army):
 		_army.queue_free()
 	_army = null
+
+
+func _tribe() -> Color:
+	return AppearanceCatalog.color_of("tribe_color", state.tribe_color())

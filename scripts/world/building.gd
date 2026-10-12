@@ -11,6 +11,8 @@ var rect := Rect2i()
 var selected := false
 var ghost := false  # placement preview
 var valid := true
+## The tribe's color, for the buildings' banners and dyed cloth.
+var tribe := Color(0.62, 0.16, 0.13)
 
 
 func setup(t: String, d: Dictionary, r: Rect2i) -> void:
@@ -31,4 +33,4 @@ func _draw() -> void:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.55))
 		draw_arc(Vector2.ZERO, rx, 0.0, TAU, 40, Color(0.95, 0.80, 0.30, 0.9) if valid else Color(1, 0.3, 0.3, 0.9), 2.0)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	BuildingDraw.draw_building(self, type_id, design, Vector2.ZERO, width, tint)
+	BuildingDraw.draw_building(self, type_id, design, Vector2.ZERO, width, tint, tribe)

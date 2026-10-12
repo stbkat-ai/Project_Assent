@@ -20,7 +20,8 @@ static func fields() -> Array:
 			["bone_headband", "Bone headband (Caveman)"]]},
 		{"key": "cloak", "label": "Cloak", "options": [["none", "None"], ["fur_cloak", "Fur mantle (Shaman)"]]},
 		{"key": "lower", "label": "Lower", "options": [["loincloth", "Loincloth (Caveman)"], ["hide_skirt", "Hide skirt (Shaman)"]]},
-		{"key": "paint", "label": "War paint", "options": [["none", "None"], ["red", "Red ochre"], ["white", "White clay"]]},
+		# War paint is always the tribe's color (set with the tribe color).
+		{"key": "paint", "label": "War paint", "options": [["none", "None"], ["tribal", "Tribal paint"]]},
 		{"key": "tribe_color", "label": "Tribe color", "options": _pairs(tribe_colors())},
 	]
 
@@ -55,12 +56,6 @@ static func tribe_colors() -> Array:
 		["bone", "Bone white", Color(0.88, 0.85, 0.76)],
 		["ash", "Ash grey", Color(0.45, 0.44, 0.42)],
 	]
-
-
-static func paint_color(id: String) -> Color:
-	if id == "white":
-		return Color(0.93, 0.92, 0.88)
-	return Color(0.72, 0.18, 0.12)
 
 
 ## Color for a color field ("skin", "hair_color", "tribe_color") by id.

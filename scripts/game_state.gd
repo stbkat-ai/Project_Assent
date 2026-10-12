@@ -126,6 +126,9 @@ func _upgrade_leader(saved: Dictionary) -> Dictionary:
 			var source: Dictionary = saved[key]
 			for field in source:
 				target[field] = str(source[field])
+	var look: Dictionary = fresh["look"]
+	if not ["none", "tribal"].has(str(look.get("paint", "none"))):
+		look["paint"] = "tribal"  # red ochre / white clay from before paint took the tribe's color
 	return fresh
 
 

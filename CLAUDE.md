@@ -35,6 +35,9 @@ https://claude.ai/code/artifact/c152695d-a333-43db-9af9-d9aa2f2796e3 — record 
 - Army: soldier designs (`state.blueprints`) and squads (`state.squads`) live in `game_state.gd` with the
   population rules (raise / disband / refit); the designer is `scripts/ui/soldier_editor.gd`, squads stand and
   march in `village.gd` (Army panel). Squad size comes from gear cost (`UnitStats.squad_size`).
+- Tribal color (`state.tribe_color()`, stored on the leader's look) is drawn on the models: war paint is a grey
+  layer tinted with it (`tools/paper_doll/build_paint.py`, run after `build.py`), and hut cloth lives in
+  `buildings/<piece>__tint` layers tinted with it (`tools/huts/build.py`). New art follows the same pattern.
 - Wilderness wildlife and scoring: `scripts/data/wildlife_catalog.gd` (stats, temper, points; the score sets
   the village's starting Hut limit via `huts_for_score`). Creature tempers live in `creature.gd`.
 - Tabs for indentation.

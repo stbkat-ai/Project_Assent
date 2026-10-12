@@ -149,7 +149,7 @@ static func pieces(look: Dictionary, gear: Dictionary) -> Dictionary:
 			"hair":
 				entry[1] = "%s_%s__%s" % [sex, base, hair_color]
 			"paint":
-				entry[1] = "%s_paint_%s__%s" % [sex, base, skin]
+				entry[1] = "%s_paint_tribal" % sex  # grey, drawn in the tribe's color
 			_:
 				entry[1] = "%s_%s" % [sex, base]
 	return out
@@ -214,7 +214,8 @@ static func draw_human(ci: CanvasItem, origin: Vector2, px: float, look: Diction
 	var back := Directions.is_back_view(c.view)
 	if has_body_art(look):
 		_draw_art_layers(ci, origin, px, c.view, c.mirrored, back, layer_pieces, walk_t, swing_t, str(look.get("sex", "male")),
-			attack_name(GearCatalog.attack_kind(str(gear.get("main_hand", "fists"))), variant))
+			attack_name(GearCatalog.attack_kind(str(gear.get("main_hand", "fists"))), variant),
+			AppearanceCatalog.color_of("tribe_color", str(look.get("tribe_color", "ochre"))))
 		return
 	for layer in (BACK_ORDER if back else FRONT_ORDER):
 		var piece: Array = layer_pieces[layer]
@@ -230,7 +231,8 @@ static func draw_human(ci: CanvasItem, origin: Vector2, px: float, look: Diction
 ## walking lifts the legs in turn and bobs the upper body; attacking leans the
 ## body forward and thrusts the weapon out from the hand.
 static func _draw_art_layers(ci: CanvasItem, origin: Vector2, px: float, view: String, mirrored: bool, back: bool,
-		layer_pieces: Dictionary, walk_t: float, swing_t: float, sex: String = "male", attack: String = "thrust") -> void:
+		layer_pieces: Dictionary, walk_t: float, swing_t: float, sex: String = "male", attack: String = "thrust",
+		tribe: Color = Color.WHITE) -> void:
 	var s := px / REF_PX * SpriteLibrary.SPRITE_SCALE
 	var rig_views: Dictionary = Rig.BODIES.get(sex, Rig.BODIES["male"])
 	var rig: Dictionary = rig_views.get(view, {})
@@ -283,6 +285,9 @@ static func _draw_art_layers(ci: CanvasItem, origin: Vector2, px: float, view: S
 					SpriteLibrary.draw_region(ci, tex, origin, s, mirrored, Rect2(Vector2.ZERO, tex.get_size()), up + lean)
 			"weapon":
 				SpriteLibrary.draw_rotated(ci, tex, origin, s, mirrored, hand, w_angle, up + lean + w_shift)
+			"paint":
+				# War paint is always the tribe's color.
+				SpriteLibrary.draw_region(ci, tex, origin, s, mirrored, Rect2(Vector2.ZERO, tex.get_size()), up + lean, tribe)
 			_:
 				SpriteLibrary.draw_region(ci, tex, origin, s, mirrored, Rect2(Vector2.ZERO, tex.get_size()), up + lean)
 
@@ -359,7 +364,7 @@ static func _body(c: Ctx, look: Dictionary) -> void:
 			c.r(8, 3, 1, 1, skin)
 	var paint_id := str(look.get("paint", "none"))
 	if paint_id != "none" and not c.back():
-		var paint := AppearanceCatalog.paint_color(paint_id)
+		var paint := AppearanceCatalog.color_of("tribe_color", str(look.get("tribe_color", "ochre")))
 		c.r(5, 4, 2, 1, paint)
 		c.r(5, 10, 2, 1, paint)
 
