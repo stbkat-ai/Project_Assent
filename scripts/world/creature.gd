@@ -258,7 +258,7 @@ func _step_toward(point: Vector2, delta: float) -> bool:
 	var dist := to.length()
 	if dist < 0.5:
 		return false
-	var pace := speed * (grid.speed_at(position) if grid != null else 1.0)
+	var pace: float = speed * (float(grid.speed_at(position)) if grid != null else 1.0)
 	var next := (position + to / dist * minf(pace * delta, dist)).clamp(bounds.position, bounds.end)
 	_face(point)
 	if grid != null and not grid.walkable(grid.cell_of(next)):
