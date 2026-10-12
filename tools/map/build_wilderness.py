@@ -48,6 +48,8 @@ TERRAIN = {
     "W": ((15, 540, 164, 650), 0.0),     # deep water - blocked
 }
 WALL_TREES = ["oak_large", "oak_medium", "pine_large", "pine_medium", "pine_small", "birch_medium", "oak_small"]
+# Beside a trail or a pocket's opening, wall trees are narrow ones, so the canopies don't close over the way in.
+WALL_TREES_NARROW = ["pine_small", "pine_medium"]
 WALL_ROCKS = ["rock_large", "rock_tall", "boulder_mossy", "rock_medium", "rock_mossy_small"]
 LONE = {
     "tree": ["oak_large", "oak_medium", "oak_small", "pine_medium", "pine_small", "birch_medium", "birch_small", "dead_tree"],
@@ -75,7 +77,7 @@ WILDLIFE = [
 ]
 GUARDS = [("caveman", 75, 13), ("caveman", 84, 19), ("wolf", 79, 23)]
 
-# Off the beaten path: hidden pockets in the woods, each reached by a narrow gap, with a
+# Off the beaten path: hidden pockets in the woods, each reached by a trail (3 squares wide, a dirt track), with a
 # reward (a cache to pick up) and whatever guards it.
 # (name, pocket center, pocket radii, gap from, gap to, terrain inside)
 SECRETS = [
@@ -89,10 +91,13 @@ CACHES = [
     ["flint_cache", "Flint cache", 20, 20, "unlock", "flint_axe", "any_yard_trophy_pile"],
     ["sling_cache", "Sling and stones", 6, 7, "unlock", "sling", "any_yard_baskets"],
     ["bone_cache", "Bone cache", 88, 33, "unlock", "bone_spear", "any_yard_bone_heap"],
-    ["honey_cache", "Honey and hides", 89, 57, "points", "60", "any_yard_clay_pots"],
+    ["honey_cache", "Honey and hides", 86, 54, "points", "60", "any_yard_clay_pots"],
 ]
 WILDLIFE += [("alpha_wolf", 21, 22), ("wolf", 18, 21), ("wolf", 22, 19), ("boar", 8, 9),
              ("alpha_wolf", 86, 33), ("wolf", 88, 35), ("wolf", 85, 34)]
+
+
+TRAILS = np.zeros((H, W), bool)  # the pocket trails: kept clear of lone objects
 
 
 def smooth_noise(rng, shape, scale):
@@ -146,7 +151,9 @@ def layout():
     for name, (cx, cy), (rx, ry), a, b, ch in SECRETS:
         disk(wall, cx, cy, rx, ry, "")
         disk(terrain, cx, cy, rx, ry, ch)
-        line(wall, [a, b], 1.4, "")
+        line(wall, [a, b], 3.2, "")
+        line(terrain, [a, b], 2.0, "d", only=set(".:,"))
+        line(TRAILS, [a, b], 3.2, True)
 
     # The river: deep in the middle, shallow banks, sandy beaches; two fords.
     river = [(35, -2), (38, 8), (42, 18), (45, 28), (50, 38), (51, 47), (48, 56), (50, 66)]
@@ -209,7 +216,7 @@ def place_objects(terrain, wall, rng):
     for y in range(2, H - 2):
         for x in range(2, W - 2):
             t = terrain[y, x]
-            if wall[y, x] or keep_clear[y, x] or taken[y, x] or t in "pWc~s":
+            if wall[y, x] or keep_clear[y, x] or TRAILS[y, x] or taken[y, x] or t in "pWc~s":
                 continue
             roll = rng.random()
             acc = 0.0
@@ -326,6 +333,8 @@ def main():
             if not wall[y, x]:
                 continue
             pool = WALL_TREES if wall[y, x] == "T" else WALL_ROCKS
+            if wall[y, x] == "T" and any(0 <= x + k < W and not wall[y, x + k] for k in (-1, 1)):
+                pool = WALL_TREES_NARROW
             piece = pool[rng.integers(len(pool))]
             px = x * TILE + TILE // 2 + int(rng.integers(-6, 7))
             py = y * TILE + TILE - int(rng.integers(0, 6))

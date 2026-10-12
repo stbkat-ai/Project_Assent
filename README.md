@@ -48,7 +48,7 @@ real sprites replace placeholders **one piece at a time** as they're added: see
 original Warcraft), painted from Luke's terrain sheet: grass, tall grass, dirt, a trampled path, rocky ground,
 sand, a river with two fords and a pond. Trees, bushes, rocks, stumps and logs are solid, forests and a rock
 ridge form walls, and everyone walks around them on found paths. Deep water can't be crossed; shallow water,
-tall grass and rocky ground slow you down; the path is quicker. Off the beaten path, narrow gaps in the woods
+tall grass and rocky ground slow you down; the path is quicker. Off the beaten path, dirt trails through the woods
 lead to four hidden spots with caches to walk onto: a Flint cache (unlocks the Flint Axe) and a Bone cache
 (unlocks the Bone-tipped Spear), each guarded by an **alpha wolf** and its pack, Sling and stones on a hidden
 beach (unlocks the Sling), and Honey and hides in the bear's den (+60 points).
