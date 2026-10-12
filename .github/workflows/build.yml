@@ -57,6 +57,14 @@ jobs:
           mkdir -v -p build/web
           godot --headless --export-release "Web" build/web/index.html
           test -f build/web/index.html
+          # Give the game data a new name every build, so phones never keep running an old cached copy.
+          PCK="game-$(echo "$GITHUB_SHA" | cut -c1-8).pck"
+          mv build/web/index.pck "build/web/$PCK"
+          sed -i "s/\"index.pck\"/\"$PCK\"/g" build/web/index.html
+          if ! grep -q '"mainPack"' build/web/index.html; then
+            sed -i "s/\"executable\":\"index\"/\"executable\":\"index\",\"mainPack\":\"$PCK\"/" build/web/index.html
+          fi
+          grep -q "\"mainPack\":\"$PCK\"" build/web/index.html
       - name: Export Android APK (debug-signed)
         continue-on-error: true
         run: |
