@@ -118,10 +118,19 @@ Built by `python3 tools/paper_doll/build.py` from the ChatGPT sheets in `assets/
 - `sheet_paper_doll_male.png` — the first male sheet; still used for the shields and the male helmets
 
 ChatGPT draws each piece centered in its own cell at its own scale, so the build fits every piece to
-landmarks on its body (head, torso, waist, hands per view, in `BODIES` in `build.py`), puts all layers of a
-view on one canvas with the feet at the bottom center, and shrinks them to game size. Weapons are held at a
-grip point near the handle end and lean forward in side views. Skin tone, hair color and war paint are
-recolored into variants; skin-colored pixels are removed from hair so the body's face shows through.
+its body (landmarks per view in `template_body.py`), puts all layers of a view on one canvas with the feet
+at the bottom center, and shrinks them to game size:
+- **Armor and skirts** (`'span'` pieces) are stretched over the body's own outline between two landmarks
+  (shoulders to chest, waist or hips, arms included) and trimmed to the body, so they hug it in every view.
+- **Hair** is scaled by the face opening in its front view (one scale per sheet: every style is drawn
+  around the same head), its crown sits on the head, side views keep the hair behind the forehead, and
+  the front views keep an oval over the face clear.
+- **Cleanup:** the sheet's magenta key leaves a purple outline (made plain dark) and pink fringes (removed);
+  bare arms GPT drew into armor are removed (the body's arms show, in the chosen skin tone); the face GPT
+  drew inside hair and headwear is removed.
+- Helmets, cloaks and shields keep their simple head / torso / hand anchors. Weapons are held at a grip
+  point near the handle end and lean forward in side views.
+Skin tone, hair color (every strand, not the bone beads) and war paint are recolored into variants.
 
 Ids: `bodies/body_<sex>__<skin>`, `hair/<sex>_<style>__<color>`, `gear/<sex>_<id>`, `clothing/<sex>_<id>`,
 `clothing/<sex>_paint_<color>__<skin>`. When a body has art, layers without art are left out (code-drawn

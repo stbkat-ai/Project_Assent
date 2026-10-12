@@ -21,6 +21,8 @@ https://claude.ai/code/artifact/c152695d-a333-43db-9af9-d9aa2f2796e3 — record 
   views by what they show. Source sheets are archived in `assets/source/`. Rules in `assets/README.md`.
   The leader uses paper-doll layers fitted to body landmarks by `tools/paper_doll/build.py` (male and
   female bodies; sheet layouts in `sheets.py`); with body art, layers lacking art are skipped, never mixed with code-drawn pieces.
+  Armor/skirts are stretched over the body outline and trimmed to it; hair is scaled by its drawn face and keeps
+  the face clear; GPT's own skin, faces and magenta fringe are removed from pieces (`clean_piece`).
 - Bodies and animation: the leader/soldier bodies ARE Luke's animation template sheet (idle + 4 whole-body walk
   frames per view, `tools/paper_doll/template_body.py`, which adds eyes, loincloth and the female chest wrap);
   `tools/paper_doll/build.py` fits every worn layer to them and writes `rig.gd` and `walk_rig.gd` (then run

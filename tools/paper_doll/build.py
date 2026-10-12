@@ -47,14 +47,18 @@ def both(src):
     return {'male': src, 'female': src}
 
 PIECES = [
-    (('hair', 'long'), {'male': ('male2', 'hair_long', 'all'), 'female': ('female', 'hair_long', 'all')}, 'head', 1.25, dict(dy=-2)),
-    (('hair', 'braids'), {'male': ('male2', 'hair_braids', 'all'), 'female': ('female', 'hair_braids', 'all')}, 'head', 1.30, dict(dy=-2)),
-    (('hair', 'short'), {'male': ('male2', 'hair_short', 'all'), 'female': ('female', 'hair_short', 'all')}, 'head', 1.20, dict(dy=-2)),
-    (('gear', 'hide_wrap'), {'male': ('male2', 'armor_hide', 'all'), 'female': ('female', 'armor_hide', 'all')}, 'torso', 1.05, dict(dy=-1)),
-    (('gear', 'leather_armor'), {'male': ('male2', 'armor_leather', 'all'), 'female': ('female', 'armor_leather', 'all')}, 'torso', 1.05, dict(dy=-1)),
-    (('gear', 'bone_hide'), both(('male2', 'armor_bone', 'all')), 'torso', 1.10, dict(dy=-2)),
+    (('hair', 'long'), {'male': ('male2', 'hair_long', 'all'), 'female': ('female', 'hair_long', 'all')}, 'hair', 1.0, {}),
+    (('hair', 'braids'), {'male': ('male2', 'hair_braids', 'all'), 'female': ('female', 'hair_braids', 'all')}, 'hair', 1.0, {}),
+    (('hair', 'short'), {'male': ('male2', 'hair_short', 'all'), 'female': ('female', 'hair_short', 'all')}, 'hair', 1.0, {}),
+    (('gear', 'hide_wrap'), {'male': ('male2', 'armor_hide', 'all'), 'female': ('female', 'armor_hide', 'all')}, 'span', 1.0,
+     dict(top=('torso', -3), bottom=('chest', 0), clip=2)),
+    (('gear', 'leather_armor'), {'male': ('male2', 'armor_leather', 'all'), 'female': ('female', 'armor_leather', 'all')}, 'span', 1.0,
+     dict(top=('torso', -3), bottom=('waist', 3), clip=2)),
+    (('gear', 'bone_hide'), both(('male2', 'armor_bone', 'all')), 'span', 1.0,
+     dict(top=('torso', -4), bottom=('hip', 8), clip=3)),
     (('clothing', 'fur_cloak'), {'male': ('male2', 'cloak_fur', 'all'), 'female': ('female', 'cloak_fur', 'all')}, 'torso', 1.30, dict(dy=-5)),
-    (('clothing', 'hide_skirt'), {'male': ('male2', 'skirt_hide', 'all'), 'female': ('female', 'skirt_hide', 'all')}, 'waist', 0.95, dict(dy=-2)),
+    (('clothing', 'hide_skirt'), {'male': ('male2', 'skirt_hide', 'all'), 'female': ('female', 'skirt_hide', 'all')}, 'span', 1.0,
+     dict(top=('waist', -2), bottom=('hip', 14), clip=3)),
     (('clothing', 'bone_headband'), {'male': ('male2', 'headband_bone', 'all'), 'female': ('female', 'headband_bone', 'all')}, 'head', 1.12, dict(dy=-1)),
     (('clothing', 'animal_hood'), {'male': ('male1', 'hood_wolf', 'all'), 'female': ('female', 'hood_wolf', 'all')}, 'head', 1.55, dict(dy=-6)),
     (('clothing', 'antler_skull'), {'male': ('male1', 'helm_antler', 'all'), 'female': ('female', 'helm_antler', 'all')}, 'head', 1.85, dict(dy=-12)),
@@ -97,6 +101,12 @@ def hair_mask(a):
     return (a[..., 3] > 0) & (v < 0.42) & (v > 0.12) & ~skin_mask(a)
 
 
+def dyeable(a):
+    """Every strand of a hairstyle (light or dark), but not its white bone beads."""
+    _, s, v = hsv(a)
+    return (a[..., 3] > 0) & ~((s < 0.25) & (v > 0.6))
+
+
 def recolor(a, mask, target, strength=1.0):
     """Give masked pixels the target color, keeping their light and shade."""
     if not mask.any():
@@ -129,8 +139,158 @@ def grip_point(piece, frac):
     return bx + (tx - bx) * frac, bottom + (top - bottom) * frac
 
 
-def fit(piece, anchor, factor, extra, lm, body_h, shape, ox, oy, waist, view):
+def pink_mask(a, hair=False):
+    """The sheet's magenta key bleeding into a piece's edges (and, in hair, the pink-tinted faces)."""
+    h, s, v = hsv(a)
+    m = (a[..., 3] > 0) & (s > 0.25) & (h >= 285) & (h <= 345)
+    if hair:
+        m |= (a[..., 3] > 0) & (s > 0.25) & (v > 0.45) & ((h > 345) | (h < 14))
+    return m
+
+
+def drop_specks(a, min_px):
+    """Remove little islands left behind (a face's eyes and mouth once the skin is gone)."""
+    from sheets import _blobs
+    lab, sizes = _blobs(a[..., 3] > 0)
+    out = a.copy()
+    for k, n in enumerate(sizes):
+        if n < min_px:
+            out[lab == k] = 0
+    return out
+
+
+def clean_piece(piece, category):
+    """A worn piece without the sheet's own skin (bare arms, faces): the body shows through
+    instead, in the chosen skin tone. Hair and headwear ('head') also lose the face drawn
+    inside them."""
+    a = piece.copy()
+    hair = category in ('hair', 'head')
+    # The magenta key tints the dark outline purple: keep it as a plain dark outline.
+    _, _, v = hsv(a)
+    pink = pink_mask(a, hair)
+    a[pink & (v < 0.5), :3] = (44, 28, 22)
+    a[pink & (v >= 0.5)] = 0
+    if category == 'hair':
+        a[skin_mask(a)] = 0
+    else:  # fur, bone and leather can look skin-ish: only clear bright bare skin
+        a[bare_skin_mask(a)] = 0
+    if hair:
+        a = drop_specks(a, 18)
+    return a
+
+
+def bare_skin_mask(a):
+    """Bare arms drawn into an armor piece: large, bright, orange-tan areas (and the skin-toned
+    shading around them). Leather that only looks skin-ish is darker or scattered, and stays."""
+    from sheets import _blobs
+    h, s, v = hsv(a)
+    core = (a[..., 3] > 0) & (h >= 14) & (h <= 29) & (s > 0.5) & (v > 0.72)
+    lab, sizes = _blobs(core)
+    big = np.isin(lab, [k for k, n in enumerate(sizes) if n >= 20])
+    return big | (skin_mask(a) & dilate(big, 2))
+
+
+def hair_fit(piece_s):
+    """Measure a hairstyle on its front view, in the piece's own pixels: the hairline row and
+    the width (at the cheeks) and center of the face opening (specks in the hair filled in first)."""
+    m = piece_s[..., 3] > 0
+    m = ~dilate(~dilate(m, 2), 2)  # close: fill little holes inside the hair
+    h, w = m.shape
+    cols = np.nonzero(m.any(axis=0))[0]
+    cx = int(round((cols.min() + cols.max()) / 2))
+    y = int(np.nonzero(m[:, cx])[0].min())
+    while y < h and m[y, cx]:
+        y += 1
+    hairline = y
+    runs = []
+    mid = hairline + (h - hairline) // 2  # cheek level: halfway from the hairline to the chin
+    for fy in range(mid - 3, min(h, mid + 4)):
+        left = cx
+        while left > 0 and not m[fy, left - 1]:
+            left -= 1
+        right = cx
+        while right < w - 1 and not m[fy, right + 1]:
+            right += 1
+        if left > 0 and right < w - 1:  # bounded by hair on both sides
+            runs.append((right - left + 1, (left + right) / 2))
+    if not runs:
+        return hairline, w * 0.5, cx
+    runs.sort()
+    width, center = runs[len(runs) // 2]
+    return hairline, width, center
+
+
+# Where a hairstyle's crown starts, in sheet pixels from the top of the bald head.
+HAIR_TOP = -3
+
+
+def hair_face_width(sex):
+    """One face width per sex: every hairstyle on a sheet is drawn around the same head, so
+    the middle measurement of the styles is used for all of them (bangs fool a single one)."""
+    widths = []
+    for key, sources, anchor, _, _ in PIECES:
+        if anchor == 'hair' and sex in sources:
+            sheet, row, pick = sources[sex]
+            widths.append(hair_fit(clean_piece(cut(sheet, row, 's', pick), 'hair'))[1])
+    return sorted(widths)[len(widths) // 2]
+
+
+def paste_xy(shape, piece, x, y, sx, sy):
+    im = Image.fromarray(piece)
+    im = im.resize((max(1, round(im.width * sx)), max(1, round(im.height * sy))), Image.NEAREST)
+    out = Image.new('RGBA', (shape[1], shape[0]), (0, 0, 0, 0))
+    out.alpha_composite(im, (int(round(x)), int(round(y))))
+    return np.asarray(out)
+
+
+def dilate(mask, r):
+    out = mask.copy()
+    for dy in range(-r, r + 1):
+        for dx in range(-r, r + 1):
+            out |= np.roll(np.roll(mask, dy, 0), dx, 1)
+    return out
+
+
+def fit(piece, anchor, factor, extra, lm, body_h, shape, ox, oy, waist, view, body=None, refs=None, hair_ref=None, eye=0):
     ph, pw = piece.shape[:2]
+    if anchor == 'span':
+        # Stretch the piece over the body's own outline between two landmarks (the full width
+        # of the body there, arms included), then trim whatever sticks out past the body.
+        top = refs[extra['top'][0]] + extra['top'][1]
+        bottom = refs[extra['bottom'][0]] + extra['bottom'][1]
+        rows = body[max(0, oy + top):oy + bottom]
+        cols = np.nonzero(rows.any(axis=0))[0]
+        x0, x1 = cols.min(), cols.max() + 1
+        layer = paste_xy(shape, piece, x0, oy + top, (x1 - x0) / pw, (bottom - top) / ph)
+        keep = dilate(body, extra['clip'])
+        layer = layer.copy()
+        layer[~keep] = 0
+        return layer
+    if anchor == 'hair':
+        # Same scale as the front view, where the face opening fits the body's face; the
+        # crown sits over the body's head.
+        scale, top_off, face_dx = hair_ref
+        hcx = lm['head'][0]
+        if view == 's':
+            x = ox + hcx - face_dx * scale
+        elif view in ('se', 'e'):
+            # Facing right: the hair's front edge stops at the forehead, the mass hangs behind.
+            hm = piece[..., 3] > 0
+            front = np.nonzero(hm[:max(2, int(ph * 0.35))].any(axis=0))[0].max()
+            x = ox + hcx + lm['head'][2] / 2 - 1 - front * scale
+        else:
+            hm = piece[..., 3] > 0
+            ys, xs = np.nonzero(hm[:max(2, ph // 4)])
+            x = ox + hcx - xs.mean() * scale
+        layer = paste_xy(shape, piece, x, oy + top_off, scale, scale).copy()
+        if view in ('s', 'se'):
+            # Keep the face clear: no strands across the eyes, cheeks or mouth.
+            fx = ox + hcx + (3 if view == 'se' else 0)
+            fy = oy + eye + 3
+            rx, ry = lm['head'][2] * 0.34, 6.5
+            yy, xx = np.mgrid[0:shape[0], 0:shape[1]]
+            layer[((xx - fx) / rx) ** 2 + ((yy - fy) / ry) ** 2 <= 1.0] = 0
+        return layer
     if anchor in ('head', 'torso'):
         cx, top, width = lm[anchor]
         s = width * factor / pw
@@ -175,14 +335,25 @@ def main():
             ox, oy = PAD, PAD
             canvas[oy:oy + bh, ox:ox + bw] = body
             lm = b['L'][v]
+            body_mask = canvas[..., 3] > 0
+            refs = dict(torso=lm['torso'][1], waist=b['waist'], hip=b['hip'],
+                        chest=lm['torso'][1] + int(0.6 * (b['waist'] - lm['torso'][1])))
             layers = {}
             for key, sources, anchor, factor, extra in PIECES:
                 if sex not in sources:
                     continue
                 sheet, row, pick = sources[sex]
                 piece = cut(sheet, row, v, pick)
-                if piece is not None:
-                    layers[key] = fit(piece, anchor, factor, extra, lm, bh, shape, ox, oy, b['waist'], v)
+                if piece is None:
+                    continue
+                piece = clean_piece(piece, 'head' if anchor == 'head' and key[0] == 'clothing' else key[0])
+                hair_ref = None
+                if anchor == 'hair':
+                    _, face_w, face_cx = hair_fit(clean_piece(cut(sheet, row, 's', pick), 'hair'))
+                    scale = 0.72 * b['L']['s']['head'][2] / hair_face_width(sex)
+                    hair_ref = (scale, HAIR_TOP, face_cx)
+                layers[key] = fit(piece, anchor, factor, extra, lm, bh, shape, ox, oy, b['waist'], v,
+                                  body=body_mask, refs=refs, hair_ref=hair_ref, eye=LANDMARKS[sex]['eye'])
             # Walk frames: feet on the same ground line, heads lined up over the idle head.
             walks = []
             idle_head = head_center(body)
@@ -230,7 +401,7 @@ def main():
                     clear = arr.copy()
                     clear[skin_mask(arr)] = 0  # let the body's own face show through
                     for hair, color in HAIRS.items():
-                        save(finish(recolor(clear, hair_mask(clear), color)), 'hair', '%s_%s__%s' % (sex, pid, hair), v)
+                        save(finish(recolor(clear, dyeable(clear), color)), 'hair', '%s_%s__%s' % (sex, pid, hair), v)
                 elif pid.startswith('paint_'):
                     for skin, color in SKINS.items():
                         save(finish(recolor(arr, skin_mask(arr), color, 0.85)), category, '%s_%s__%s' % (sex, pid, skin), v)

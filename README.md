@@ -44,6 +44,12 @@ Remaining placeholders are pixel art drawn in code. Every clothing and gear piec
 real sprites replace placeholders **one piece at a time** as they're added: see
 [`assets/README.md`](assets/README.md) for the folder layout, naming and the sheet-slicing tools.
 
+**Armor and hair fit the bodies (0.17.0):** armor and skirts are stretched over each body's own outline
+(shoulders to waist or hips, arms included) and trimmed to it; the bare arms GPT drew into some armor are
+gone so the body's own arms show in the chosen skin tone. Hair is sized by the face it was drawn around,
+sits on the skull, hangs behind the face in side views and leaves the face clear from the front; the faces
+GPT drew inside hair and helmets are gone, and so is the pink fringe from the sheets' background.
+
 **The wilderness map (0.16.0):** the wilderness is now a real map on a grid of person-sized squares (like the
 original Warcraft), painted from Luke's terrain sheet: grass, tall grass, dirt, a trampled path, rocky ground,
 sand, a river with two fords and a pond. Trees, bushes, rocks, stumps and logs are solid, forests and a rock

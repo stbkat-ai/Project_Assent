@@ -8,7 +8,7 @@ A = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'assets
 VIEWS = ['s', 'se', 'e', 'ne', 'n']
 ROWS = [
     ('male', 'skin3', ['hair/male_short__brown', 'gear/male_hide_wrap', 'gear/male_spear', 'gear/male_hide_shield']),
-    ('male', 'skin5', ['clothing/male_paint_red__skin5', 'gear/male_leather_armor', 'clothing/male_fur_cloak', 'hair/male_long__black', 'gear/male_club']),
+    ('male', 'skin5', ['gear/male_leather_armor', 'clothing/male_fur_cloak', 'hair/male_long__black', 'gear/male_club']),
     ('male', 'skin1', ['clothing/male_hide_skirt', 'gear/male_bone_hide', 'clothing/male_antler_skull', 'gear/male_stone_axe', 'gear/male_bone_shield']),
     ('female', 'skin2', ['hair/female_long__auburn', 'gear/female_hide_wrap', 'gear/female_spear', 'gear/female_hide_shield']),
     ('female', 'skin4', ['clothing/female_hide_skirt', 'gear/female_leather_armor', 'hair/female_braids__black', 'clothing/female_bone_headband', 'gear/female_club']),
