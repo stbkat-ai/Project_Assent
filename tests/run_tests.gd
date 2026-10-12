@@ -250,7 +250,8 @@ func _test_art(sprites, scenery) -> void:
 			if absf(float(v)) > 0.001:
 				rest_ok = false
 	_check(rest_ok, "attacks start and end at rest")
-	_check(float(fig.attack_pose("swing", 0.35)[0]) < -1.0, "a club or axe is raised back before the strike")
+	_check(float(fig.attack_pose("swing", 0.35)[0]) < -1.0 and float(fig.attack_pose("swing", 0.35)[4]) > 4.0,
+		"a club or axe is raised back overhead before the strike")
 	_check(float(fig.attack_pose("thrust", 0.55)[1]) > 4.0, "a spear is pushed forward in the thrust")
 	_check(fig.attack_name("swing", 1) == "overhead" and fig.attack_name("thrust", 4) == "sweep_thrust",
 		"each weapon kind mixes three attacks")

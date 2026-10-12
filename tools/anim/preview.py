@@ -19,7 +19,7 @@ FORWARD = {"s": (0, 0.6), "se": (0.8, 0.4), "e": (1, 0), "ne": (0.8, -0.4), "n":
 
 def read_poses():
     text = open(os.path.join(ROOT, "scripts", "render", "figure.gd")).read()
-    block = text[text.index("const ATTACK_POSES"):text.index("## Share of the attack")]
+    block = text[text.index("const ATTACK_POSES"):text.index("## The attacks a weapon kind")]
     poses = {}
     for name, body in re.findall(r'"(\w+)": \[(.*?)\],\n\t(?:#|\})', block + "\n\t}", re.S):
         poses[name] = [[float(x) for x in k.split(",")] for k in re.findall(r"\[([-\d., ]+)\]", body)]
@@ -44,8 +44,8 @@ def pose_at(keys, t):
             a, b = keys[i - 1], keys[i]
             k = (t - a[0]) / max(b[0] - a[0], 1e-4)
             k = k * k * (3 - 2 * k)
-            return [a[j] + (b[j] - a[j]) * k for j in range(1, 5)]
-    return [0, 0, 0, 0]
+            return [a[j] + (b[j] - a[j]) * k for j in range(1, 6)]
+    return [0, 0, 0, 0, 0]
 
 
 def draw(sex, skin, view, weapon, walk_phase=None, attack=None, t=0.0, poses=None, hands=None, legs=None):
@@ -54,9 +54,9 @@ def draw(sex, skin, view, weapon, walk_phase=None, attack=None, t=0.0, poses=Non
     canvas = Image.new("RGBA", (W, H), (52, 70, 40, 255))
     body = Image.open(os.path.join(SP, "bodies", "body_%s__%s" % (sex, skin), view + ".png"))
     fw = FORWARD[view]
-    angle = push = lean = dip = 0.0
+    angle = push = lean = dip = lift = 0.0
     if attack:
-        angle, push, lean, dip = pose_at(poses[attack], t)
+        angle, push, lean, dip, lift = pose_at(poses[attack], t)
         angle *= 0.35 + 0.65 * abs(fw[0])
     lunge = legs[sex][view]
     frames = [os.path.join(SP, "bodies", "body_%s__%s" % (sex, skin), "%s_walk_%d.png" % (view, n)) for n in range(4)]
@@ -78,7 +78,7 @@ def draw(sex, skin, view, weapon, walk_phase=None, attack=None, t=0.0, poses=Non
     # Pivot in weapon image coords: sprite drawn bottom-center at feet.
     px, py = w.width / 2 + hx, w.height + hy
     rot = w.rotate(-math.degrees(angle), center=(px, py), resample=Image.NEAREST)
-    place(rot, (up[0] + fw[0] * push, up[1] + fw[1] * push))
+    place(rot, (up[0] + fw[0] * push, up[1] + fw[1] * push - lift))
     return canvas
 
 

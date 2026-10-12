@@ -286,13 +286,17 @@ func _draw() -> void:
 		draw_arc(Vector2.ZERO, 18.0, 0.0, TAU, 32, Color(0.95, 0.80, 0.30, 0.9), 2.0)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	var drawn := false
+	# A hit knocks the unit back for a moment.
+	var at := Vector2.ZERO
+	if _hurt_t > 0.0:
+		at = -Vector2.from_angle(dir * PI / 4.0) * 3.0 * (_hurt_t / 0.15)
 	if sprite_piece != "":
-		drawn = Figure.draw_whole(self, Vector2.ZERO, PX, sprite_category, sprite_piece, dir, _walk_t, _swing_t)
+		drawn = Figure.draw_whole(self, at, PX, sprite_category, sprite_piece, dir, _walk_t, _swing_t)
 	if not drawn:
 		if kind == "wolf":
-			Figure.draw_wolf(self, Vector2.ZERO, PX, dir, _walk_t, _swing_t)
+			Figure.draw_wolf(self, at, PX, dir, _walk_t, _swing_t)
 		else:
-			Figure.draw_human(self, Vector2.ZERO, PX, look, gear, dir, _walk_t, _swing_t, attack_variant)
+			Figure.draw_human(self, at, PX, look, gear, dir, _walk_t, _swing_t, attack_variant)
 	if squad_leader:
 		_draw_pennant()
 	if hp < max_hp or is_hero:
@@ -304,7 +308,23 @@ func _draw() -> void:
 
 
 func _leave_corpse() -> void:
-	if sprite_piece == "" or get_parent() == null:
+	if get_parent() == null:
+		return
+	if sprite_piece == "" and kind == "human":
+		# A person falls backwards: their own figure, turned on its side and darkened.
+		var fallen := Corpse.new()
+		fallen.figure = true
+		fallen.look = look
+		fallen.gear = gear
+		fallen.dir = dir
+		fallen.px = PX
+		var facing_right := Vector2.from_angle(dir * PI / 4.0).x >= 0.0
+		fallen.rotation = -PI / 2.0 if facing_right else PI / 2.0
+		fallen.position = position + Vector2(-10.0 if facing_right else 10.0, -4.0)
+		fallen.modulate = Color(0.78, 0.74, 0.72)
+		get_parent().add_child(fallen)
+		return
+	if sprite_piece == "":
 		return
 	var tex = Figure.death_frame(sprite_category, sprite_piece)
 	if tex == null:

@@ -9,7 +9,7 @@ Stone Age to the space age. Built in **Godot 4** (GDScript), 2D pixel art, lands
 
 Both links rebuild automatically about 5 minutes after every push to `main`.
 
-## What's playable now (v0.14.0)
+## What's playable now (v0.15.0)
 
 | Prototype | Opening phase | What you can do |
 | --- | --- | --- |
@@ -43,6 +43,11 @@ leader is still the code-drawn placeholder.
 Remaining placeholders are pixel art drawn in code. Every clothing and gear piece is its own layer, and
 real sprites replace placeholders **one piece at a time** as they're added: see
 [`assets/README.md`](assets/README.md) for the folder layout, naming and the sheet-slicing tools.
+
+**Combat animation (0.15.0):** attacks follow the poses on Luke's animation sheets: the weapon hand moves (raised
+overhead for a club or axe wind-up and the overhead stab, driven forward in a spear thrust, low in a sweep), the
+body leans and crouches into the blow and the legs take the widest stride. A hit knocks a unit back for an
+instant, and a fallen person stays on the ground (then fades) instead of vanishing.
 
 **New bodies and walk (0.14.0):** the leader's and soldiers' bodies are now Luke's animation template itself:
 the full figure walks with the template's 4 walk frames in every direction (no more stubby legs), and every

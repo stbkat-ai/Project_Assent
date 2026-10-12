@@ -19,28 +19,33 @@ const WalkRig = preload("res://scripts/data/walk_rig.gd")
 
 ## How long an attack takes to play, in seconds.
 const ATTACK_TIME := 0.45
-## Attack keyframes, timed from the poses in Luke's animation template sheet:
-## [time 0-1, weapon turn (radians, + = forward/down), weapon push forward,
-## body lean forward, crouch] (pushes and leans in art pixels).
+## Attack keyframes, posed after the attack rows of Luke's animation template and
+## soldier weapon sheets: [time 0-1, weapon turn (radians, + = forward/down),
+## weapon push forward, body lean forward, crouch, hand lift] (pushes, leans and
+## lifts in art pixels). The weapon turns around the hand, and the hand itself
+## moves: raised overhead for a wind-up, driven forward in a thrust.
 const ATTACK_POSES := {
-	# Spear: draw back low, lunge with the spear level, recover.
-	"thrust": [[0.0, 0.0, 0.0, 0.0, 0.0], [0.3, -0.3, -2.0, -0.5, 1.0], [0.55, 0.4, 6.0, 2.0, 0.0],
-		[0.8, 0.3, 4.0, 1.5, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0]],
-	# Club and axe: raise it back overhead, crouch, swing down and forward, follow through.
-	"swing": [[0.0, 0.0, 0.0, 0.0, 0.0], [0.35, -1.4, -1.0, -0.8, 1.0], [0.6, 0.55, 3.0, 2.5, 0.5],
-		[0.8, 0.75, 2.0, 1.5, 0.5], [1.0, 0.0, 0.0, 0.0, 0.0]],
-	# Spear sweep and overhead stab (the soldier weapon sheet's attacks 2 and 3).
-	"sweep_thrust": [[0.0, 0.0, 0.0, 0.0, 0.0], [0.3, -0.9, -1.0, -0.5, 0.5], [0.6, 0.9, 3.0, 1.5, 0.0],
-		[0.8, 1.1, 2.0, 1.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0]],
-	"overhead_thrust": [[0.0, 0.0, 0.0, 0.0, 0.0], [0.35, -0.8, 0.0, -0.6, -1.0], [0.6, 0.7, 5.0, 2.0, 1.0],
-		[0.8, 0.5, 3.0, 1.5, 0.5], [1.0, 0.0, 0.0, 0.0, 0.0]],
-	# Club and axe: a big overhead smash, and a low sideways sweep.
-	"overhead": [[0.0, 0.0, 0.0, 0.0, 0.0], [0.4, -2.0, -1.5, -1.0, -0.5], [0.65, 1.0, 3.0, 3.0, 1.5],
-		[0.85, 1.0, 2.0, 2.0, 1.0], [1.0, 0.0, 0.0, 0.0, 0.0]],
-	"sweep": [[0.0, 0.0, 0.0, 0.0, 0.0], [0.3, -0.6, -2.0, 0.0, 0.5], [0.6, 1.2, 4.0, 1.5, 0.5],
-		[0.8, 1.4, 3.0, 1.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0]],
-	# Sling and bow: pull back and release.
-	"shoot": [[0.0, 0.0, 0.0, 0.0, 0.0], [0.4, 0.0, -2.0, 0.0, 0.0], [0.6, 0.0, -2.5, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0]],
+	# Spear: draw back low, drive it forward level, hold, recover.
+	"thrust": [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.3, -0.25, -4.0, -1.0, 1.0, 2.0], [0.5, 0.35, 9.0, 3.0, 0.0, 3.0],
+		[0.7, 0.3, 7.0, 2.5, 0.0, 3.0], [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]],
+	# Spear sweep: swing the shaft back, then across in front.
+	"sweep_thrust": [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.3, -1.0, -2.0, -0.5, 0.5, 4.0], [0.55, 1.0, 4.0, 2.0, 0.5, 2.0],
+		[0.8, 1.2, 3.0, 1.5, 0.0, 1.0], [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]],
+	# Overhead stab: raise the spear high, rise up, then stab down and forward.
+	"overhead_thrust": [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.35, -0.6, 0.0, -1.0, -1.0, 10.0], [0.6, 0.8, 6.0, 3.0, 1.0, 3.0],
+		[0.8, 0.6, 4.0, 2.0, 0.5, 2.0], [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]],
+	# Club and axe: raise it back behind the head with a crouch, swing down and forward, follow through.
+	"swing": [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.35, -1.6, -2.0, -1.0, 1.0, 8.0], [0.6, 1.0, 4.0, 3.0, 1.5, 2.0],
+		[0.8, 1.5, 3.0, 2.0, 1.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]],
+	# Overhead smash: both arms high, then all the weight into a downward blow.
+	"overhead": [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.4, -2.4, -1.0, -1.5, -1.0, 12.0], [0.65, 1.2, 4.0, 3.5, 2.0, 2.0],
+		[0.85, 1.3, 3.0, 2.5, 1.5, 1.0], [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]],
+	# Low sweep: wind back at the hip and cut across.
+	"sweep": [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.3, -0.9, -3.0, 0.0, 1.0, 3.0], [0.6, 1.5, 5.0, 2.0, 1.0, 1.0],
+		[0.8, 1.8, 3.0, 1.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]],
+	# Sling and bow: raise, pull back and release.
+	"shoot": [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.4, 0.0, -2.0, 0.0, 0.0, 3.0], [0.6, 0.0, -2.5, 0.0, 0.0, 3.0],
+		[1.0, 0.0, 0.0, 0.0, 0.0, 0.0]],
 }
 ## The attacks a weapon kind mixes between (each swing picks one).
 const ATTACK_VARIANTS := {
@@ -244,10 +249,10 @@ static func _draw_art_layers(ci: CanvasItem, origin: Vector2, px: float, view: S
 	var attacking := swing_t > 0.0
 	var t := clampf(1.0 - swing_t / ATTACK_TIME, 0.0, 1.0) if attacking else 0.0
 	var fwd: Vector2 = FORWARD.get(view, Vector2(1, 0))
-	var pose := attack_pose(attack, t) if attacking else [0.0, 0.0, 0.0, 0.0]
+	var pose := attack_pose(attack, t) if attacking else [0.0, 0.0, 0.0, 0.0, 0.0]
 	# Facing the viewer or away, a forward swing turns the weapon less on screen.
 	var w_angle := float(pose[0]) * (0.35 + 0.65 * absf(fwd.x))
-	var w_shift := fwd * float(pose[1])
+	var w_shift := fwd * float(pose[1]) + Vector2(0, -float(pose[4]))
 	var lean := fwd * float(pose[2]) + Vector2(0, float(pose[3]))
 	# Whole-body walk frames from Luke's animation template: used while walking, and
 	# the widest stride is the lunge of an attack. Everything worn moves with the body.
@@ -299,7 +304,7 @@ static func attack_name(kind: String, variant: int) -> String:
 	return str(list[posmod(variant, list.size())])
 
 
-## [weapon turn, weapon push, body lean, crouch] at `t` (0-1) through an attack,
+## [weapon turn, weapon push, body lean, crouch, hand lift] at `t` (0-1) through an attack,
 ## blended between the keyframes in ATTACK_POSES.
 static func attack_pose(attack: String, t: float) -> Array:
 	var keys: Array = ATTACK_POSES.get(attack, ATTACK_POSES["thrust"])
@@ -310,10 +315,10 @@ static func attack_pose(attack: String, t: float) -> Array:
 			var span := maxf(float(b[0]) - float(a[0]), 0.0001)
 			var k := smoothstep(0.0, 1.0, (t - float(a[0])) / span)
 			var out: Array = []
-			for j in range(1, 5):
+			for j in range(1, 6):
 				out.append(lerpf(float(a[j]), float(b[j]), k))
 			return out
-	return [0.0, 0.0, 0.0, 0.0]
+	return [0.0, 0.0, 0.0, 0.0, 0.0]
 
 
 static func _placeholder(c: Ctx, layer: String, piece: String, look: Dictionary) -> void:
