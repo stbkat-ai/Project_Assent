@@ -5,18 +5,18 @@ extends RefCounted
 
 const BODIES := {
 	"male": {
-		"s": {"main_hand": Vector2(11.1, -7.8), "off_hand": Vector2(-11.1, -7.8), "hip": -7.8},
-		"se": {"main_hand": Vector2(11.4, -7.8), "off_hand": Vector2(-10.3, -7.8), "hip": -7.8},
-		"e": {"main_hand": Vector2(-3.1, -7.8), "off_hand": Vector2(3.6, -11.7), "hip": -7.8},
-		"ne": {"main_hand": Vector2(11.4, -7.8), "off_hand": Vector2(-11.9, -8.9), "hip": -7.8},
-		"n": {"main_hand": Vector2(11.1, -7.8), "off_hand": Vector2(-11.7, -7.8), "hip": -7.8},
+		"s": {"main_hand": Vector2(11.8, -17.0), "off_hand": Vector2(-12.2, -17.0), "hip": -15.0},
+		"se": {"main_hand": Vector2(11.5, -21.0), "off_hand": Vector2(-10.5, -16.0), "hip": -16.0},
+		"e": {"main_hand": Vector2(8.0, -21.5), "off_hand": Vector2(-6.0, -16.5), "hip": -15.5},
+		"ne": {"main_hand": Vector2(12.2, -17.0), "off_hand": Vector2(-12.2, -17.0), "hip": -16.0},
+		"n": {"main_hand": Vector2(12.2, -17.0), "off_hand": Vector2(-12.2, -17.0), "hip": -16.0},
 	},
 	"female": {
-		"s": {"main_hand": Vector2(7.8, -16.3), "off_hand": Vector2(-7.8, -16.3), "hip": -13.7},
-		"se": {"main_hand": Vector2(7.5, -17.3), "off_hand": Vector2(-7.5, -15.7), "hip": -13.7},
-		"e": {"main_hand": Vector2(-1.7, -15.7), "off_hand": Vector2(2.3, -19.7), "hip": -13.7},
-		"ne": {"main_hand": Vector2(7.3, -16.3), "off_hand": Vector2(-7.7, -16.3), "hip": -13.7},
-		"n": {"main_hand": Vector2(8.0, -15.7), "off_hand": Vector2(-8.0, -15.7), "hip": -13.7},
+		"s": {"main_hand": Vector2(12.0, -19.0), "off_hand": Vector2(-11.0, -18.0), "hip": -19.0},
+		"se": {"main_hand": Vector2(12.8, -22.0), "off_hand": Vector2(-10.2, -17.0), "hip": -18.0},
+		"e": {"main_hand": Vector2(8.5, -22.5), "off_hand": Vector2(-4.0, -18.5), "hip": -18.5},
+		"ne": {"main_hand": Vector2(12.8, -18.0), "off_hand": Vector2(-11.2, -18.0), "hip": -19.0},
+		"n": {"main_hand": Vector2(12.8, -18.0), "off_hand": Vector2(-11.2, -18.0), "hip": -19.0},
 	},
 }
 

@@ -249,21 +249,20 @@ static func _draw_art_layers(ci: CanvasItem, origin: Vector2, px: float, view: S
 	var w_angle := float(pose[0]) * (0.35 + 0.65 * absf(fwd.x))
 	var w_shift := fwd * float(pose[1])
 	var lean := fwd * float(pose[2]) + Vector2(0, float(pose[3]))
-	# Walk-cycle legs from the animation template replace the body's own legs
-	# while walking and in the lunge of an attack.
-	var leg_frames: Array = []
-	var legs_h := 0.0
-	var legs_rig: Dictionary = WalkRig.legs().get(sex, {}).get(view, {})
-	if not legs_rig.is_empty():
-		var body_id := str(layer_pieces["body"][1])
-		leg_frames = SpriteLibrary.frames("bodies", body_id.replace("body_", "legs_"), view, "walk")
-		legs_h = float(legs_rig["legs"])
-	var leg_tex = null
-	if leg_frames.size() >= 4:
+	# Whole-body walk frames from Luke's animation template: used while walking, and
+	# the widest stride is the lunge of an attack. Everything worn moves with the body.
+	var frame := -1
+	var rig_walk: Dictionary = WalkRig.walk().get(sex, {}).get(view, {})
+	var body_frames: Array = SpriteLibrary.frames("bodies", str(layer_pieces["body"][1]), view, "walk")
+	if body_frames.size() >= 4 and not rig_walk.is_empty():
 		if attacking and attack != "shoot" and t >= LUNGE_FROM and t <= LUNGE_TO:
-			leg_tex = leg_frames[int(legs_rig["lunge"]) % leg_frames.size()]
+			frame = int(rig_walk["lunge"]) % 4
 		elif walking:
-			leg_tex = leg_frames[int(phase / (TAU / 4.0)) % 4]
+			frame = int(phase / (TAU / 4.0)) % 4
+	var shift := up + lean
+	if frame >= 0:
+		var offsets: Array = rig_walk["offsets"]
+		shift = lean + offsets[frame]
 	for layer in (ART_BACK_ORDER if back else ART_FRONT_ORDER):
 		var piece: Array = layer_pieces[layer]
 		if str(piece[1]) == "":
@@ -273,23 +272,25 @@ static func _draw_art_layers(ci: CanvasItem, origin: Vector2, px: float, view: S
 			continue
 		match str(layer):
 			"body":
-				if leg_tex != null:
-					var size: Vector2 = tex.get_size()
-					SpriteLibrary.draw(ci, leg_tex, origin, s, mirrored)
-					# Upper body overlaps the new legs by 2 px so the bob never opens a gap.
-					SpriteLibrary.draw_region(ci, tex, origin, s, mirrored,
-						Rect2(0, 0, size.x, minf(size.y, size.y - legs_h + 2.0)), up + lean)
+				if frame >= 0:
+					SpriteLibrary.draw_region(ci, body_frames[frame], origin, s, mirrored,
+						Rect2(Vector2.ZERO, body_frames[frame].get_size()), lean)
 				elif walking:
-					SpriteLibrary.draw_walking(ci, tex, origin, s, mirrored, hip, phase, up + lean)
+					SpriteLibrary.draw_walking(ci, tex, origin, s, mirrored, hip, phase, shift)
 				else:
-					SpriteLibrary.draw_region(ci, tex, origin, s, mirrored, Rect2(Vector2.ZERO, tex.get_size()), up + lean)
+					SpriteLibrary.draw_region(ci, tex, origin, s, mirrored, Rect2(Vector2.ZERO, tex.get_size()), shift)
 			"weapon":
-				SpriteLibrary.draw_rotated(ci, tex, origin, s, mirrored, hand, w_angle, up + lean + w_shift)
+				SpriteLibrary.draw_rotated(ci, tex, origin, s, mirrored, hand, w_angle, shift + w_shift)
 			"paint":
-				# War paint is always the tribe's color.
-				SpriteLibrary.draw_region(ci, tex, origin, s, mirrored, Rect2(Vector2.ZERO, tex.get_size()), up + lean, tribe)
+				# War paint is always the tribe's color, and has its own walk frames.
+				if frame >= 0:
+					var paint_frames: Array = SpriteLibrary.frames(str(piece[0]), str(piece[1]), view, "walk")
+					if paint_frames.size() >= 4:
+						tex = paint_frames[frame]
+				SpriteLibrary.draw_region(ci, tex, origin, s, mirrored, Rect2(Vector2.ZERO, tex.get_size()),
+					lean if frame >= 0 else shift, tribe)
 			_:
-				SpriteLibrary.draw_region(ci, tex, origin, s, mirrored, Rect2(Vector2.ZERO, tex.get_size()), up + lean)
+				SpriteLibrary.draw_region(ci, tex, origin, s, mirrored, Rect2(Vector2.ZERO, tex.get_size()), shift)
 
 
 ## Which attack (a key of ATTACK_POSES) variant `variant` of a weapon kind plays.

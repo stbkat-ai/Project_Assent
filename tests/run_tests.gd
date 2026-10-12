@@ -237,9 +237,12 @@ func _test_art(sprites, scenery) -> void:
 	for sex in ["male", "female"]:
 		for skin in ["skin1", "skin2", "skin3", "skin4", "skin5", "skin6"]:
 			for view in ["s", "se", "e", "ne", "n"]:
-				if sprites.frames("bodies", "legs_%s__%s" % [sex, skin], view, "walk").size() != 4:
+				if sprites.frames("bodies", "body_%s__%s" % [sex, skin], view, "walk").size() != 4:
 					legs_ok = false
-	_check(legs_ok, "4 walk-cycle leg frames for every body, skin tone and view")
+	_check(legs_ok, "4 whole-body walk frames for every body, skin tone and view")
+	var rig_walk: Dictionary = load("res://scripts/data/walk_rig.gd").walk()
+	_check(rig_walk.has("male") and rig_walk.has("female") and rig_walk["male"]["s"]["offsets"].size() == 4,
+		"the walk rig moves worn layers with every walk frame")
 	var fig = load("res://scripts/render/figure.gd")
 	var rest_ok := true
 	for kind in ["thrust", "swing", "shoot", "sweep_thrust", "overhead_thrust", "overhead", "sweep"]:

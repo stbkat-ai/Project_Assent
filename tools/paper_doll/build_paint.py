@@ -34,8 +34,9 @@ def rows(box, band):
     return int(round(top + band[0] * h)), max(int(round(top + band[1] * h)), int(round(top + band[0] * h)) + 1)
 
 
-def paint_layer(sex, view):
-    body = np.asarray(Image.open(os.path.join(SPRITES, "bodies", "body_%s__skin3" % sex, view + ".png")))
+def paint_layer(sex, view, name=None):
+    """The paint for one body frame (`name` = file name without .png, default the still view)."""
+    body = np.asarray(Image.open(os.path.join(SPRITES, "bodies", "body_%s__skin3" % sex, (name or view) + ".png")))
     skin = skin_mask(body)
     _, _, v = hsv(body)
     box = Image.fromarray(body).getbbox()
@@ -71,6 +72,9 @@ def main():
         os.makedirs(folder, exist_ok=True)
         for view in VIEWS:
             Image.fromarray(paint_layer(sex, view)).save(os.path.join(folder, view + ".png"))
+            for n in range(4):  # the walk frames, so the paint moves with the body
+                name = "%s_walk_%d" % (view, n)
+                Image.fromarray(paint_layer(sex, view, name)).save(os.path.join(folder, name + ".png"))
     print("built tribal war paint for male, female")
 
 

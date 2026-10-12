@@ -9,7 +9,7 @@ Stone Age to the space age. Built in **Godot 4** (GDScript), 2D pixel art, lands
 
 Both links rebuild automatically about 5 minutes after every push to `main`.
 
-## What's playable now (v0.13.0)
+## What's playable now (v0.14.0)
 
 | Prototype | Opening phase | What you can do |
 | --- | --- | --- |
@@ -43,6 +43,11 @@ leader is still the code-drawn placeholder.
 Remaining placeholders are pixel art drawn in code. Every clothing and gear piece is its own layer, and
 real sprites replace placeholders **one piece at a time** as they're added: see
 [`assets/README.md`](assets/README.md) for the folder layout, naming and the sheet-slicing tools.
+
+**New bodies and walk (0.14.0):** the leader's and soldiers' bodies are now Luke's animation template itself:
+the full figure walks with the template's 4 walk frames in every direction (no more stubby legs), and every
+hair, clothing, armor and weapon layer is refitted to these bodies. The template's mannequins get simple eyes,
+a loincloth and (female) a chest wrap.
 
 **Tribal colors (0.13.0):** the tribe's color now shows on the models. War paint is a single "Tribal paint"
 choice (a stripe across the eyes, a chest band and armbands, for both bodies in every direction) always drawn

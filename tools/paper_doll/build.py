@@ -25,6 +25,7 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from sheets import cut, VIEWS  # noqa: E402
+from template_body import LANDMARKS, body_frame, head_center  # noqa: E402
 
 ROOT = os.path.join(HERE, '..', '..')
 SPRITES = os.path.join(ROOT, 'assets', 'sprites')
@@ -33,22 +34,13 @@ PAD = 70
 # Landmarks on each bald body, in sheet pixels of the body's own crop:
 # head (center x, top y, width), torso (center x, top y, width), waist y, hip y (legs start),
 # main / off hand (x, y).
+# The bodies come from Luke's animation template (template_body.py): idle + 4 walk
+# frames per view, in the template's sheet pixels (2 sheet pixels per art pixel).
 BODIES = {
-    'male': dict(sheet='male2', scale=1.8, waist=50, hip=62, L={
-        's':  dict(head=(27, 0, 21), torso=(27, 24, 34), main=(47, 62), off=(7, 62)),
-        'se': dict(head=(28, 0, 21), torso=(26, 25, 32), main=(45, 62), off=(6, 62)),
-        'e':  dict(head=(16, 0, 21), torso=(15, 24, 22), main=(10, 62), off=(22, 55)),
-        'ne': dict(head=(21, 0, 20), torso=(24, 26, 34), main=(45, 62), off=(3, 60)),
-        'n':  dict(head=(27, 0, 21), torso=(27, 26, 36), main=(47, 62), off=(6, 62)),
-    }),
-    'female': dict(sheet='female', scale=3.0, waist=70, hip=88, L={
-        's':  dict(head=(31, 0, 22), torso=(31, 34, 42), main=(55, 80), off=(8, 80)),
-        'se': dict(head=(30, 0, 22), torso=(28, 34, 38), main=(51, 77), off=(6, 82)),
-        'e':  dict(head=(21, 0, 22), torso=(17, 34, 24), main=(14, 82), off=(26, 70)),
-        'ne': dict(head=(27, 0, 22), torso=(29, 36, 42), main=(50, 80), off=(5, 80)),
-        'n':  dict(head=(30, 0, 22), torso=(30, 36, 44), main=(54, 82), off=(6, 82)),
-    }),
+    sex: dict(sheet='template', scale=2.0, waist=lm['waist'], hip=lm['hip'], L=lm['L'])
+    for sex, lm in LANDMARKS.items()
 }
+WALK_FRAMES = 4
 
 # (category, id): {sex: (sheet, row, pick)}, anchor, size factor, extra
 def both(src):
@@ -176,7 +168,7 @@ def main():
         rig[sex] = {}
         sc = b['scale']
         for v in VIEWS:
-            body = cut(b['sheet'], 'body', v)
+            body = body_frame(sex, v, 0)
             bh, bw = body.shape[:2]
             shape = (bh + PAD, bw + 2 * PAD, 4)
             canvas = np.zeros(shape, np.uint8)
@@ -191,9 +183,22 @@ def main():
                 piece = cut(sheet, row, v, pick)
                 if piece is not None:
                     layers[key] = fit(piece, anchor, factor, extra, lm, bh, shape, ox, oy, b['waist'], v)
+            # Walk frames: feet on the same ground line, heads lined up over the idle head.
+            walks = []
+            idle_head = head_center(body)
+            for n in range(WALK_FRAMES):
+                f = body_frame(sex, v, n + 1)
+                fh, fw = f.shape[:2]
+                fx = int(round(ox + idle_head - head_center(f)))
+                fy = oy + bh - fh
+                frame_canvas = np.zeros(shape, np.uint8)
+                frame_canvas[fy:fy + fh, fx:fx + fw] = f
+                walks.append((frame_canvas, fh, fw))
             # One crop for every layer of this view: symmetric about the body, bottom at the feet.
             union = canvas[..., 3] > 0
             for arr in layers.values():
+                union |= arr[..., 3] > 0
+            for arr, _, _ in walks:
                 union |= arr[..., 3] > 0
             ys, xs = np.nonzero(union)
             feet, cx = oy + bh, ox + bw / 2
@@ -207,12 +212,19 @@ def main():
 
             def rel(x, y):
                 return [round((x - cx) / sc, 1), round((y - feet) / sc, 1)]
+            # How far the head (and everything worn above the legs) moves in each walk frame,
+            # and the widest stride (the lunge of an attack).
+            offsets = [[0.0, round((bh - fh) / sc, 1)] for _, fh, _ in walks]
+            lunge = int(np.argmax([fw for _, _, fw in walks]))
             rig[sex][v] = dict(main=rel(ox + lm['main'][0], oy + lm['main'][1]),
                                off=rel(ox + lm['off'][0], oy + lm['off'][1]),
-                               hip=round((oy + b['hip'] - feet) / sc, 1))
+                               hip=round((oy + b['hip'] - feet) / sc, 1), walk=offsets, lunge=lunge)
             sm = skin_mask(canvas)
             for skin, color in SKINS.items():
                 save(finish(recolor(canvas, sm, color, 0.85)), 'bodies', 'body_%s__%s' % (sex, skin), v)
+                for n, (arr, _, _) in enumerate(walks):
+                    save(finish(recolor(arr, skin_mask(arr), color, 0.85)), 'bodies', 'body_%s__%s' % (sex, skin),
+                         '%s_walk_%d' % (v, n))
             for (category, pid), arr in layers.items():
                 if category == 'hair':
                     clear = arr.copy()
@@ -236,6 +248,18 @@ def main():
                     v, r['main'][0], r['main'][1], r['off'][0], r['off'][1], r['hip']))
             f.write('\t},\n')
         f.write('}\n\n\nstatic func bodies() -> Dictionary:\n\treturn BODIES\n')
+    with open(os.path.join(ROOT, 'scripts', 'data', 'walk_rig.gd'), 'w') as f:
+        f.write('extends RefCounted\n## Generated by tools/paper_doll/build.py - do not edit by hand.\n')
+        f.write('## Per sex and view: walk = how far everything worn above the legs moves (art pixels) in each\n')
+        f.write('## walk frame (bodies/body_<sex>__<skin>/<view>_walk_<n>.png), lunge = the walk frame with the\n')
+        f.write('## widest stride, used while striking.\n\nconst WALK := {\n')
+        for sex, views in rig.items():
+            f.write('\t"%s": {\n' % sex)
+            for v, r in views.items():
+                offs = ', '.join('Vector2(%s, %s)' % (o[0], o[1]) for o in r['walk'])
+                f.write('\t\t"%s": {"offsets": [%s], "lunge": %d},\n' % (v, offs, r['lunge']))
+            f.write('\t},\n')
+        f.write('}\n\n\nstatic func walk() -> Dictionary:\n\treturn WALK\n')
     print('built paper-doll sprites for', ', '.join(BODIES))
 
 

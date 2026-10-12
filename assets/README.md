@@ -23,11 +23,13 @@ assets/sprites/<category>/<piece>/<view>.png              still frame
 assets/sprites/<category>/<piece>/<view>_<anim>_<n>.png    animation frames, n = 0, 1, 2 ...
 ```
 
-Animations so far: `walk`. The leader's walk cycle is `bodies/legs_<sex>__<skin>/<view>_walk_<0-3>.png`
-(legs only, on the body's canvas), built by `tools/anim/build_walk.py` from Luke's animation template
-`assets/source/sheet_anim_template.png`; it also writes `scripts/data/walk_rig.gd`. Attacks are keyframed in
-code from the template's poses (`ATTACK_POSES` in `scripts/render/figure.gd`); `tools/anim/preview.py` renders
-a GIF of both. Re-run `build_walk.py` after `tools/paper_doll/build.py`.
+Animations so far: `walk`. The leader's body is Luke's animation template
+(`assets/source/sheet_anim_template.png`): `bodies/body_<sex>__<skin>/<view>.png` is the idle pose and
+`<view>_walk_<0-3>.png` the 4 whole-body walk frames, built by `tools/paper_doll/build.py` (via
+`template_body.py`, which adds eyes, a loincloth and the female chest wrap); it also fits every worn layer to
+these bodies and writes `scripts/data/rig.gd` and `scripts/data/walk_rig.gd`. Then run
+`tools/paper_doll/build_paint.py` (war paint, with walk frames). Attacks are keyframed in code from the
+template's poses (`ATTACK_POSES` in `scripts/render/figure.gd`); `tools/anim/preview.py` renders a GIF.
 
 | Category | Piece ids (Stone Age) | Notes |
 | --- | --- | --- |

@@ -45,11 +45,12 @@ def largest(sub):
     return sub[y0:y1, x0:x1]
 
 
-def frame(sex, view, row):
-    """row 0 = idle, 1-4 = walk frames. Returns an RGBA array at art scale."""
+def frame(sex, view, row, scale=SCALE):
+    """row 0 = idle, 1-4 = walk frames. Returns an RGBA array (scale 1 = sheet pixels)."""
     a = keyed()
     (y0, y1), (x0, x1) = ROWS[sex][row], COLS[VIEWS.index(view)]
     piece = largest(a[y0 + 3:y1 - 2, x0 + 3:x1 - 2])
     im = Image.fromarray(piece)
-    im = im.resize((max(1, im.width // SCALE), max(1, im.height // SCALE)), Image.NEAREST)
+    if scale > 1:
+        im = im.resize((max(1, im.width // scale), max(1, im.height // scale)), Image.NEAREST)
     return np.asarray(im)

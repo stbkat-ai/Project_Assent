@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Animated preview (GIF) of the leader walking and attacking, drawn the way
-scripts/render/figure.gd draws it (walk legs + attack keyframes).
+scripts/render/figure.gd draws it (whole-body walk frames + attack keyframes).
 
     python3 tools/anim/preview.py OUT.gif
 """
@@ -34,7 +34,7 @@ def rig():
     text = open(os.path.join(ROOT, "scripts", "data", "walk_rig.gd")).read()
     legs = {}
     for sex, body in re.findall(r'"(male|female)": \{(.*?)\n\t\}', text, re.S):
-        legs[sex] = {v: (float(h), int(l)) for v, h, l in re.findall(r'"(\w+)": \{"legs": ([\d.]+), "lunge": (\d+)\}', body)}
+        legs[sex] = {v: int(l) for v, l in re.findall(r'"(\w+)": \{"offsets": \[.*?\], "lunge": (\d+)\}', body)}
     return out, legs
 
 
@@ -58,29 +58,20 @@ def draw(sex, skin, view, weapon, walk_phase=None, attack=None, t=0.0, poses=Non
     if attack:
         angle, push, lean, dip = pose_at(poses[attack], t)
         angle *= 0.35 + 0.65 * abs(fw[0])
-    legs_h, lunge = legs[sex][view]
-    leg_img = None
-    frames = [os.path.join(SP, "bodies", "legs_%s__%s" % (sex, skin), "%s_walk_%d.png" % (view, n)) for n in range(4)]
+    lunge = legs[sex][view]
+    frames = [os.path.join(SP, "bodies", "body_%s__%s" % (sex, skin), "%s_walk_%d.png" % (view, n)) for n in range(4)]
     if attack and attack != "shoot" and 0.45 <= t <= 0.85:
-        leg_img = Image.open(frames[lunge])
+        body = Image.open(frames[lunge])
     elif walk_phase is not None:
-        leg_img = Image.open(frames[int(walk_phase / (math.pi / 2)) % 4])
-    bob = -abs(math.sin(walk_phase)) if walk_phase is not None else 0
-    up = (fw[0] * lean, fw[1] * lean + dip + bob)
+        body = Image.open(frames[int(walk_phase / (math.pi / 2)) % 4])
+    up = (fw[0] * lean, fw[1] * lean + dip)
 
     def place(img, shift=(0, 0)):
         x = feet[0] - img.width // 2 + round(shift[0])
         y = feet[1] - img.height + round(shift[1])
         canvas.alpha_composite(img, (x, y))
 
-    if leg_img is not None:
-        place(leg_img)
-        upper = body.crop((0, 0, body.width, int(body.height - legs_h + 2)))
-        full = Image.new("RGBA", body.size)
-        full.alpha_composite(upper)
-        place(full, up)
-    else:
-        place(body, up)
+    place(body, up)
     wpath = os.path.join(SP, "gear", "%s_%s" % (sex, weapon), view + ".png")
     w = Image.open(wpath)
     hx, hy = hands[sex][view]

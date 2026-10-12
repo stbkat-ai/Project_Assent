@@ -21,9 +21,11 @@ https://claude.ai/code/artifact/c152695d-a333-43db-9af9-d9aa2f2796e3 — record 
   views by what they show. Source sheets are archived in `assets/source/`. Rules in `assets/README.md`.
   The leader uses paper-doll layers fitted to body landmarks by `tools/paper_doll/build.py` (male and
   female bodies; sheet layouts in `sheets.py`); with body art, layers lacking art are skipped, never mixed with code-drawn pieces.
-- Animation: the leader's walk legs come from Luke's template sheet via `tools/anim/build_walk.py` (run it
-  after `tools/paper_doll/build.py`; writes `scripts/data/walk_rig.gd`); attacks are keyframes
-  (`ATTACK_POSES` in `figure.gd`, attack length `Figure.ATTACK_TIME`). Preview: `tools/anim/preview.py`.
+- Bodies and animation: the leader/soldier bodies ARE Luke's animation template sheet (idle + 4 whole-body walk
+  frames per view, `tools/paper_doll/template_body.py`, which adds eyes, loincloth and the female chest wrap);
+  `tools/paper_doll/build.py` fits every worn layer to them and writes `rig.gd` and `walk_rig.gd` (then run
+  `build_paint.py`). Attacks are keyframes (`ATTACK_POSES` in `figure.gd`, `Figure.ATTACK_TIME`).
+  Preview: `tools/anim/preview.py`.
 - Creator screens: `scripts/ui/creator_screen.gd` is the shared frame (painted art + tap zones, live stage,
   options panel of tiles, view strip) laid out in the art's own 1536 x 1024 pixels; the leader and hut editors
   fill it. Screen art comes from Luke's mockups via `tools/ui/build_screens.py`.
